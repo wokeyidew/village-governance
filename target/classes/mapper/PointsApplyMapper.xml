@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.scau.village.module.points.mapper.PointsApplyMapper">
+
+    <!-- 结果映射：InspectionRecordVO -->
+    <resultMap id="InspectionRecordVOMap" type="com.scau.village.module.points.vo.InspectionRecordVO">
+        <id property="recordId" column="recordId"/>
+        <result property="batchId" column="batchId"/>
+        <result property="batchName" column="batchName"/>
+        <result property="userId" column="userId"/>
+        <result property="userName" column="userName"/>
+        <result property="userPhone" column="userPhone"/>
+        <result property="ruleId" column="ruleId"/>
+        <result property="ruleName" column="ruleName"/>
+        <result property="ruleScore" column="ruleScore"/>
+        <result property="sourceType" column="sourceType"/>
+        <result property="inspectorId" column="inspectorId"/>
+        <result property="inspectorName" column="inspectorName"/>
+        <result property="inspectionDate" column="inspectionDate"/>
+        <result property="description" column="description"/>
+        <result property="images" column="images"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="createTime"/>
+    </resultMap>
+
+    <!-- 分页查询检查记录 -->
+    <select id="selectInspectionRecords" resultMap="InspectionRecordVOMap">
+        SELECT
+            a.id AS recordId,
+            a.inspection_batch_id AS batchId,
+            b.batch_name AS batchName,
+            a.user_id AS userId,
+            u.real_name AS userName,
+            u.phone AS userPhone,
+            a.rule_id AS ruleId,
+            r.rule_name AS ruleName,
+            r.points AS ruleScore,
+            a.source_type AS sourceType,
+            a.inspector_id AS inspectorId,
+            u2.real_name AS inspectorName,
+            a.inspection_date AS inspectionDate,
+            a.description,
+            a.images,
+            a.status,
+            a.create_time AS createTime
+        FROM points_apply a
+        LEFT JOIN `user` u ON a.user_id = u.id
+        LEFT JOIN points_rule r ON a.rule_id = r.id
+        LEFT JOIN `user` u2 ON a.inspector_id = u2.id
+        LEFT JOIN inspection_batch b ON a.inspection_batch_id = b.id
+        <where>
+            a.source_type = 'admin'
+            <if test="query.batchId != null">
+                AND a.inspection_batch_id = #{query.batchId}
+            </if>
+            <if test="query.userId != null">
+                AND a.user_id = #{query.userId}
+            </if>
+            <if test="query.startDate != null">
+                AND a.inspection_date >= #{query.startDate}
+            </if>
+            <if test="query.endDate != null">
+                AND a.inspection_date &lt;= #{query.endDate}
+            </if>
+        </where>
+        ORDER BY a.create_time DESC
+    </select>
+
+    <!-- 导出数据（明细） -->
+    <select id="selectExportData" resultType="com.scau.village.module.points.vo.ExportDataVO">
+        SELECT
+            b.batch_name AS batchName,
+            a.inspection_date AS inspectionDate,
+            u.real_name AS userName,
+            r.rule_name AS ruleName,
+            r.points AS score,
+            u2.real_name AS inspectorName,
+            a.description,
+            a.create_time AS createTime
+        FROM points_apply a
+        LEFT JOIN `user` u ON a.user_id = u.id
+        LEFT JOIN points_rule r ON a.rule_id = r.id
+        LEFT JOIN `user` u2 ON a.inspector_id = u2.id
+        LEFT JOIN inspection_batch b ON a.inspection_batch_id = b.id
+        <where>
+            a.source_type = 'admin'
+            <if test="query.batchId != null">
+                AND a.inspection_batch_id = #{query.batchId}
+            </if>
+            <if test="query.userId != null">
+                AND a.user_id = #{query.userId}
+            </if>
+            <if test="query.startDate != null">
+                AND a.inspection_date >= #{query.startDate}
+            </if>
+            <if test="query.endDate != null">
+                AND a.inspection_date &lt;= #{query.endDate}
+            </if>
+        </where>
+        ORDER BY a.create_time DESC
+    </select>
+
+</mapper>

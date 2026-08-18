@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.scau.village.module.moment.mapper.MomentCommentMapper">
+
+    <!-- 根据动态ID查询所有评论 -->
+    <select id="selectByMomentId" resultType="com.scau.village.module.moment.entity.MomentComment">
+        SELECT
+            id,
+            moment_id AS momentId,
+            user_id AS userId,
+            parent_id AS parentId,
+            content,
+            create_time AS createTime,
+            tenant_id AS tenantId
+        FROM moment_comment
+        WHERE moment_id = #{momentId}
+        ORDER BY create_time ASC
+    </select>
+
+</mapper>
