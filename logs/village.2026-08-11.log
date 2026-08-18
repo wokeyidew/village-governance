@@ -1,0 +1,212 @@
+2026-08-11 02:18:02.521 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 6.2.5.Final
+2026-08-11 02:18:02.536 [main] INFO  com.scau.village.VillageApplication - Starting VillageApplication using Java 17.0.18 on DESKTOP-PFETOUB with PID 7580 (E:\Scau\工作\科创\a三下乡\后端\target\classes started by 吴雪盈 in E:\Scau\工作\科创\a三下乡\后端)
+2026-08-11 02:18:02.536 [main] DEBUG com.scau.village.VillageApplication - Running with Spring Boot v2.7.18, Spring v5.3.31
+2026-08-11 02:18:02.536 [main] INFO  com.scau.village.VillageApplication - The following 1 profile is active: "dev"
+2026-08-11 02:18:03.192 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-11 02:18:03.192 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-08-11 02:18:03.217 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 16 ms. Found 0 Redis repository interfaces.
+2026-08-11 02:18:03.709 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 8080 (http)
+2026-08-11 02:18:03.720 [main] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-08-11 02:18:03.720 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-08-11 02:18:03.720 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/9.0.83]
+2026-08-11 02:18:03.801 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-08-11 02:18:03.805 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 1235 ms
+2026-08-11 02:18:04.029 [main] DEBUG c.s.v.common.config.SecurityConfig$1 - Filter 'jwtAuthenticationFilter' configured for use
+2026-08-11 02:18:04.897 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerAdapter - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-08-11 02:18:04.919 [main] INFO  o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-08-11 02:18:04.966 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - 95 mappings in 'requestMappingHandlerMapping'
+2026-08-11 02:18:04.981 [main] DEBUG o.s.w.s.h.SimpleUrlHandlerMapping - Patterns [/webjars/**, /**, /upload/**, /swagger-ui*/*swagger-initializer.js, /swagger-ui*/**] in 'resourceHandlerMapping'
+2026-08-11 02:18:04.990 [main] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-08-11 02:18:05.190 [main] WARN  o.s.b.a.s.s.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: f1593f21-4bb1-4722-bfd9-1edc1f9e4d5b
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-08-11 02:18:05.249 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@77988c45, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@f5f8de2, org.springframework.security.web.context.SecurityContextPersistenceFilter@abf1816, org.springframework.security.web.header.HeaderWriterFilter@750c23a3, org.springframework.security.web.authentication.logout.LogoutFilter@5b324447, com.scau.village.common.config.SecurityConfig$1@237b2852, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@7bd1098, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@1f365a26, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@6baee63b, org.springframework.security.web.session.SessionManagementFilter@73baf7f0, org.springframework.security.web.access.ExceptionTranslationFilter@2c92f094, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@7c45191e]
+2026-08-11 02:18:05.265 [main] INFO  o.s.b.a.e.web.EndpointLinksResolver - Exposing 2 endpoint(s) beneath base path '/actuator'
+2026-08-11 02:18:05.290 [main] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-08-11 02:18:05.320 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port(s): 8080 (http) with context path ''
+2026-08-11 02:18:05.336 [main] INFO  com.scau.village.VillageApplication - Started VillageApplication in 3.16 seconds (JVM running for 3.45)
+2026-08-11 02:18:26.011 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-08-11 02:18:26.011 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-08-11 02:18:26.011 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected StandardServletMultipartResolver
+2026-08-11 02:18:26.011 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected AcceptHeaderLocaleResolver
+2026-08-11 02:18:26.011 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected FixedThemeResolver
+2026-08-11 02:18:26.016 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@1dd247b
+2026-08-11 02:18:26.016 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.support.SessionFlashMapManager@2fca282c
+2026-08-11 02:18:26.016 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
+2026-08-11 02:18:26.016 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 5 ms
+2026-08-11 02:18:26.027 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/auth/login", parameters={}
+2026-08-11 02:18:26.032 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.scau.village.module.auth.controller.AuthController#login(LoginDto)
+2026-08-11 02:18:26.080 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [LoginDto(phone=null, password=null)]
+2026-08-11 02:18:26.171 [http-nio-8080-exec-1] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-08-11 02:18:26.303 [http-nio-8080-exec-1] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-08-11 02:18:26.345 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Using @ExceptionHandler com.scau.village.common.exception.GlobalExceptionHandler#handleBusinessException(BusinessException)
+2026-08-11 02:18:26.345 [http-nio-8080-exec-1] ERROR c.s.v.c.e.GlobalExceptionHandler - 业务异常: code=500, message=手机号未注册
+2026-08-11 02:18:26.356 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-08-11 02:18:26.356 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing [Result(code=500, message=手机号未注册, data=null)]
+2026-08-11 02:18:26.361 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [com.scau.village.common.exception.BusinessException: 手机号未注册]
+2026-08-11 02:18:26.361 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 500 INTERNAL_SERVER_ERROR
+2026-08-11 02:18:57.911 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/auth/login", parameters={}
+2026-08-11 02:18:57.911 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.scau.village.module.auth.controller.AuthController#login(LoginDto)
+2026-08-11 02:18:57.911 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [LoginDto(phone=13800138001, password=123456)]
+2026-08-11 02:18:57.991 [http-nio-8080-exec-3] INFO  c.s.v.m.a.controller.AuthController - 登录尝试，手机号: 13800138001, 匹配结果: true
+2026-08-11 02:18:58.014 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-08-11 02:18:58.014 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [Result(code=200, message=success, data=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1MSIsInJvbGUiOiJWSUxMQUdFX0FE (truncated)...]
+2026-08-11 02:18:58.016 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-08-11 02:19:01.511 [http-nio-8080-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/auth/login", parameters={}
+2026-08-11 02:19:01.511 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.scau.village.module.auth.controller.AuthController#login(LoginDto)
+2026-08-11 02:19:01.513 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [LoginDto(phone=13800138001, password=123456)]
+2026-08-11 02:19:01.580 [http-nio-8080-exec-6] INFO  c.s.v.m.a.controller.AuthController - 登录尝试，手机号: 13800138001, 匹配结果: true
+2026-08-11 02:19:01.584 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-08-11 02:19:01.584 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [Result(code=200, message=success, data=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1MSIsInJvbGUiOiJWSUxMQUdFX0FE (truncated)...]
+2026-08-11 02:19:01.584 [http-nio-8080-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-08-11 02:19:24.501 [http-nio-8080-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/auth/login", parameters={}
+2026-08-11 02:19:24.505 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.scau.village.module.auth.controller.AuthController#login(LoginDto)
+2026-08-11 02:19:24.507 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [LoginDto(phone=13800138001, password=123456)]
+2026-08-11 02:19:24.645 [http-nio-8080-exec-5] INFO  c.s.v.m.a.controller.AuthController - 登录尝试，手机号: 13800138001, 匹配结果: true
+2026-08-11 02:19:24.650 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-08-11 02:19:24.650 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [Result(code=200, message=success, data=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1MSIsInJvbGUiOiJWSUxMQUdFX0FE (truncated)...]
+2026-08-11 02:19:24.650 [http-nio-8080-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-08-11 02:19:26.648 [http-nio-8080-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/auth/login", parameters={}
+2026-08-11 02:19:26.648 [http-nio-8080-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.scau.village.module.auth.controller.AuthController#login(LoginDto)
+2026-08-11 02:19:26.650 [http-nio-8080-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [LoginDto(phone=13800138001, password=123456)]
+2026-08-11 02:19:26.805 [http-nio-8080-exec-7] INFO  c.s.v.m.a.controller.AuthController - 登录尝试，手机号: 13800138001, 匹配结果: true
+2026-08-11 02:19:26.806 [http-nio-8080-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-08-11 02:19:26.806 [http-nio-8080-exec-7] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [Result(code=200, message=success, data=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1MSIsInJvbGUiOiJWSUxMQUdFX0FE (truncated)...]
+2026-08-11 02:19:26.806 [http-nio-8080-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-08-11 02:20:42.562 [http-nio-8080-exec-10] DEBUG c.s.v.common.config.SecurityConfig - JWT认证成功: userId=51, role=VILLAGE_ADMIN
+2026-08-11 02:20:42.597 [http-nio-8080-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/activity/qrcode", parameters={}
+2026-08-11 02:20:42.598 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.scau.village.module.activity.controller.ActivityController#generateQRCode(QRCodeDto)
+2026-08-11 02:20:42.600 [http-nio-8080-exec-10] DEBUG c.s.v.c.interceptor.JwtInterceptor - 需要认证: uri=/api/activity/qrcode, method=POST
+2026-08-11 02:20:42.602 [http-nio-8080-exec-10] DEBUG c.s.v.c.interceptor.JwtInterceptor - UserContext 已设置: userId=51, role=VILLAGE_ADMIN, tenantId=1
+2026-08-11 02:20:42.603 [http-nio-8080-exec-10] DEBUG c.s.v.c.interceptor.JwtInterceptor - Token 验证通过，UserContext 已设置
+2026-08-11 02:20:42.606 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [QRCodeDto(activityId=1, type=signin, dynamic=true)]
+2026-08-11 02:20:42.942 [http-nio-8080-exec-10] DEBUG c.s.v.common.utils.QRCodeCacheUtil - 动态码已保存，key=a09b6986cf884d7fb9c34cfe4a58134c, value=07652a37ae020def:signin:1, 有效期=15秒
+2026-08-11 02:20:43.045 [http-nio-8080-exec-10] INFO  c.s.v.m.a.s.impl.ActivityServiceImpl - 生成二维码成功，活动ID=1, 类型=signin, 动态=true
+2026-08-11 02:20:43.048 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-08-11 02:20:43.051 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [Result(code=200, message=success, data=QRCodeVO(qrcodeImage=data:image/png;base64,iVBORw0KGgoAAAANSU (truncated)...]
+2026-08-11 02:20:43.053 [http-nio-8080-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-08-11 02:33:16.634 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-08-11 02:33:16.645 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2026-08-11 02:46:50.952 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 6.2.5.Final
+2026-08-11 02:46:50.968 [main] INFO  com.scau.village.VillageApplication - Starting VillageApplication using Java 17.0.18 on DESKTOP-PFETOUB with PID 23468 (E:\Scau\工作\科创\a三下乡\后端\target\classes started by 吴雪盈 in E:\Scau\工作\科创\a三下乡\后端)
+2026-08-11 02:46:50.968 [main] DEBUG com.scau.village.VillageApplication - Running with Spring Boot v2.7.18, Spring v5.3.31
+2026-08-11 02:46:50.968 [main] INFO  com.scau.village.VillageApplication - The following 1 profile is active: "dev"
+2026-08-11 02:46:51.570 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-11 02:46:51.570 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-08-11 02:46:51.594 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 16 ms. Found 0 Redis repository interfaces.
+2026-08-11 02:46:52.050 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 8080 (http)
+2026-08-11 02:46:52.055 [main] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-08-11 02:46:52.055 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-08-11 02:46:52.055 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/9.0.83]
+2026-08-11 02:46:52.181 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-08-11 02:46:52.181 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 1184 ms
+2026-08-11 02:46:52.394 [main] DEBUG c.s.v.common.config.SecurityConfig$1 - Filter 'jwtAuthenticationFilter' configured for use
+2026-08-11 02:46:53.386 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerAdapter - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-08-11 02:46:53.403 [main] INFO  o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-08-11 02:46:53.450 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - 96 mappings in 'requestMappingHandlerMapping'
+2026-08-11 02:46:53.471 [main] DEBUG o.s.w.s.h.SimpleUrlHandlerMapping - Patterns [/webjars/**, /**, /upload/**, /swagger-ui*/*swagger-initializer.js, /swagger-ui*/**] in 'resourceHandlerMapping'
+2026-08-11 02:46:53.477 [main] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-08-11 02:46:53.545 [main] WARN  o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'wxMaService' defined in class path resource [com/binarywang/spring/starter/wxjava/miniapp/config/WxMaServiceAutoConfiguration.class]: Bean instantiation via factory method failed; nested exception is org.springframework.beans.BeanInstantiationException: Failed to instantiate [cn.binarywang.wx.miniapp.api.WxMaService]: Factory method 'wxMaService' threw exception; nested exception is com.google.gson.JsonIOException: Failed making field 'java.io.File#path' accessible; either change its visibility or write a custom TypeAdapter for its declaring type
+2026-08-11 02:46:53.562 [main] INFO  o.a.catalina.core.StandardService - Stopping service [Tomcat]
+2026-08-11 02:46:53.573 [main] INFO  o.s.b.a.l.ConditionEvaluationReportLoggingListener - 
+
+Error starting ApplicationContext. To display the conditions report re-run your application with 'debug' enabled.
+2026-08-11 02:46:53.585 [main] ERROR o.s.boot.SpringApplication - Application run failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'wxMaService' defined in class path resource [com/binarywang/spring/starter/wxjava/miniapp/config/WxMaServiceAutoConfiguration.class]: Bean instantiation via factory method failed; nested exception is org.springframework.beans.BeanInstantiationException: Failed to instantiate [cn.binarywang.wx.miniapp.api.WxMaService]: Factory method 'wxMaService' threw exception; nested exception is com.google.gson.JsonIOException: Failed making field 'java.io.File#path' accessible; either change its visibility or write a custom TypeAdapter for its declaring type
+	at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+	at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:633)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1352)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1195)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:582)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:542)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:335)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:333)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:208)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:955)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:929)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:591)
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:147)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:732)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:409)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:308)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1300)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1289)
+	at com.scau.village.VillageApplication.main(VillageApplication.java:14)
+Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [cn.binarywang.wx.miniapp.api.WxMaService]: Factory method 'wxMaService' threw exception; nested exception is com.google.gson.JsonIOException: Failed making field 'java.io.File#path' accessible; either change its visibility or write a custom TypeAdapter for its declaring type
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:185)
+	at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:648)
+	... 19 common frames omitted
+Caused by: com.google.gson.JsonIOException: Failed making field 'java.io.File#path' accessible; either change its visibility or write a custom TypeAdapter for its declaring type
+	at com.google.gson.internal.reflect.ReflectionHelper.makeAccessible(ReflectionHelper.java:23)
+	at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.getBoundFields(ReflectiveTypeAdapterFactory.java:203)
+	at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.create(ReflectiveTypeAdapterFactory.java:112)
+	at com.google.gson.Gson.getAdapter(Gson.java:531)
+	at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.createBoundField(ReflectiveTypeAdapterFactory.java:137)
+	at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.getBoundFields(ReflectiveTypeAdapterFactory.java:211)
+	at com.google.gson.internal.bind.ReflectiveTypeAdapterFactory.create(ReflectiveTypeAdapterFactory.java:112)
+	at com.google.gson.Gson.getAdapter(Gson.java:531)
+	at com.google.gson.Gson.toJson(Gson.java:778)
+	at com.google.gson.Gson.toJson(Gson.java:756)
+	at com.google.gson.Gson.toJson(Gson.java:711)
+	at com.google.gson.Gson.toJson(Gson.java:691)
+	at cn.binarywang.wx.miniapp.config.impl.WxMaDefaultConfigImpl.toString(WxMaDefaultConfigImpl.java:334)
+	at java.base/java.lang.String.valueOf(String.java:4220)
+	at java.base/java.lang.StringBuilder.append(StringBuilder.java:173)
+	at com.google.common.collect.CollectPreconditions.checkEntryNotNull(CollectPreconditions.java:31)
+	at com.google.common.collect.SingletonImmutableBiMap.<init>(SingletonImmutableBiMap.java:43)
+	at com.google.common.collect.ImmutableBiMap.of(ImmutableBiMap.java:83)
+	at com.google.common.collect.ImmutableMap.of(ImmutableMap.java:130)
+	at cn.binarywang.wx.miniapp.api.impl.BaseWxMaServiceImpl.setWxMaConfig(BaseWxMaServiceImpl.java:369)
+	at com.binarywang.spring.starter.wxjava.miniapp.config.WxMaServiceAutoConfiguration.wxMaService(WxMaServiceAutoConfiguration.java:53)
+	at com.binarywang.spring.starter.wxjava.miniapp.config.WxMaServiceAutoConfiguration$$EnhancerBySpringCGLIB$$613561f5.CGLIB$wxMaService$0(<generated>)
+	at com.binarywang.spring.starter.wxjava.miniapp.config.WxMaServiceAutoConfiguration$$EnhancerBySpringCGLIB$$613561f5$$FastClassBySpringCGLIB$$730e3839.invoke(<generated>)
+	at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:244)
+	at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:331)
+	at com.binarywang.spring.starter.wxjava.miniapp.config.WxMaServiceAutoConfiguration$$EnhancerBySpringCGLIB$$613561f5.wxMaService(<generated>)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:154)
+	... 20 common frames omitted
+Caused by: java.lang.reflect.InaccessibleObjectException: Unable to make field private final java.lang.String java.io.File.path accessible: module java.base does not "opens java.io" to unnamed module @768b970c
+	at java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(AccessibleObject.java:354)
+	at java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(AccessibleObject.java:297)
+	at java.base/java.lang.reflect.Field.checkCanSetAccessible(Field.java:178)
+	at java.base/java.lang.reflect.Field.setAccessible(Field.java:172)
+	at com.google.gson.internal.reflect.ReflectionHelper.makeAccessible(ReflectionHelper.java:20)
+	... 50 common frames omitted
+2026-08-11 02:48:08.647 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 6.2.5.Final
+2026-08-11 02:48:08.658 [main] INFO  com.scau.village.VillageApplication - Starting VillageApplication using Java 17.0.18 on DESKTOP-PFETOUB with PID 5244 (E:\Scau\工作\科创\a三下乡\后端\target\classes started by 吴雪盈 in E:\Scau\工作\科创\a三下乡\后端)
+2026-08-11 02:48:08.662 [main] DEBUG com.scau.village.VillageApplication - Running with Spring Boot v2.7.18, Spring v5.3.31
+2026-08-11 02:48:08.662 [main] INFO  com.scau.village.VillageApplication - The following 1 profile is active: "dev"
+2026-08-11 02:48:09.253 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-11 02:48:09.255 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-08-11 02:48:09.279 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 19 ms. Found 0 Redis repository interfaces.
+2026-08-11 02:48:09.723 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 8080 (http)
+2026-08-11 02:48:09.728 [main] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-08-11 02:48:09.728 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-08-11 02:48:09.728 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/9.0.83]
+2026-08-11 02:48:09.814 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-08-11 02:48:09.814 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 1117 ms
+2026-08-11 02:48:10.031 [main] DEBUG c.s.v.common.config.SecurityConfig$1 - Filter 'jwtAuthenticationFilter' configured for use
+2026-08-11 02:48:10.965 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerAdapter - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-08-11 02:48:10.983 [main] INFO  o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-08-11 02:48:11.032 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - 96 mappings in 'requestMappingHandlerMapping'
+2026-08-11 02:48:11.049 [main] DEBUG o.s.w.s.h.SimpleUrlHandlerMapping - Patterns [/webjars/**, /**, /upload/**, /swagger-ui*/*swagger-initializer.js, /swagger-ui*/**] in 'resourceHandlerMapping'
+2026-08-11 02:48:11.052 [main] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-08-11 02:48:11.234 [main] WARN  o.s.b.a.s.s.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 60e9deb6-83a4-44f3-9ba7-5ee4b4bd5f59
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-08-11 02:48:11.280 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@7a600e21, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@69d1ad64, org.springframework.security.web.context.SecurityContextPersistenceFilter@34e53c02, org.springframework.security.web.header.HeaderWriterFilter@591ba330, org.springframework.security.web.authentication.logout.LogoutFilter@185b7cc6, com.scau.village.common.config.SecurityConfig$1@701c223a, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@3efb863c, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@1fab0394, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@458b4487, org.springframework.security.web.session.SessionManagementFilter@e296794, org.springframework.security.web.access.ExceptionTranslationFilter@9fc2f89, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@69d61a6f]
+2026-08-11 02:48:11.297 [main] INFO  o.s.b.a.e.web.EndpointLinksResolver - Exposing 2 endpoint(s) beneath base path '/actuator'
+2026-08-11 02:48:11.328 [main] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-08-11 02:48:11.345 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port(s): 8080 (http) with context path ''
+2026-08-11 02:48:11.353 [main] INFO  com.scau.village.VillageApplication - Started VillageApplication in 2.986 seconds (JVM running for 3.246)

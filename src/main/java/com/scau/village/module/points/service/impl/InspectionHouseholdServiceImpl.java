@@ -1,0 +1,83 @@
+package com.scau.village.module.points.service.impl;
+
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.scau.village.common.context.UserContext;
+import com.scau.village.module.points.entity.InspectionHousehold;
+import com.scau.village.module.points.mapper.InspectionHouseholdMapper;
+import com.scau.village.module.points.service.InspectionHouseholdService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+/**
+ * 检查户汇总服务实现类
+ *
+ * @author system
+ * @since 2026-07-16
+ */
+@Slf4j
+@Service
+public class InspectionHouseholdServiceImpl
+        extends ServiceImpl<InspectionHouseholdMapper, InspectionHousehold>
+        implements InspectionHouseholdService {
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public InspectionHousehold saveOrUpdateSummary(Long batchId, Integer userId, Integer totalScore,
+                                                   String detailJson, Integer inspectorId, String remark) {
+        // 获取租户ID，若为空则使用默认值 1
+        Integer tenantId = UserContext.getCurrentTenantId();
+        if (tenantId == null) {
+            tenantId = 1; // 默认租户ID（龙胜村）
+            log.warn("UserContext 中 tenantId 为空，使用默认值: 1");
+        }
+
+        // 转换 userId 和 inspectorId 为 Long（适配实体字段类型）
+        Long userIdLong = userId != null ? userId.longValue() : null;
+        Long inspectorIdLong = inspectorId != null ? inspectorId.longValue() : null;
+
+        // 查询是否已存在汇总记录
+        InspectionHousehold existing = null;
+        try {
+            existing = baseMapper.selectByBatchIdAndUserId(batchId, userId);
+        } catch (Exception e) {
+            log.error("查询汇总记录失败，batchId={}, userId={}", batchId, userId, e);
+            // 如果查询失败，视为不存在，继续执行插入
+        }
+
+        if (existing != null) {
+            // 更新已有记录
+            existing.setTotalScore(totalScore);
+            if (detailJson != null) {
+                existing.setDetailJson(detailJson);
+            }
+            if (remark != null) {
+                existing.setRemark(remark);
+            }
+            existing.setInspectorId(inspectorIdLong);
+            existing.setUpdateTime(LocalDateTime.now());
+            updateById(existing);
+            log.debug("更新汇总记录成功，batchId={}, userId={}, totalScore={}", batchId, userId, totalScore);
+            return existing;
+        } else {
+            // 新增记录
+            InspectionHousehold household = new InspectionHousehold();
+            household.setBatchId(batchId);
+            household.setUserId(userIdLong);
+            household.setTotalScore(totalScore);
+            household.setDetailJson(detailJson);
+            household.setInspectorId(inspectorIdLong);
+            household.setRemark(remark);
+            // 确保 tenantId 不为 null，数据库表 tenant_id 为 NOT NULL
+            household.setTenantId(tenantId.longValue());
+            household.setCreateTime(LocalDateTime.now());
+            household.setUpdateTime(LocalDateTime.now());
+            household.setDeleted(0);
+            save(household);
+            log.debug("新增汇总记录成功，batchId={}, userId={}, totalScore={}", batchId, userId, totalScore);
+            return household;
+        }
+    }
+}

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.scau.village.module.activity.mapper.ActivityRegistrationMapper">
+
+    <!-- 通用结果映射 -->
+    <resultMap id="BaseResultMap" type="com.scau.village.module.activity.entity.ActivityRegistration">
+        <id column="id" property="id"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="activity_id" property="activityId"/>
+        <result column="user_id" property="userId"/>
+        <result column="participant_name" property="participantName"/>
+        <result column="phone" property="phone"/>
+        <result column="remark" property="remark"/>
+        <result column="signed_in" property="signedIn"/>
+        <result column="sign_time" property="signTime"/>
+        <result column="checked_out" property="checkedOut"/>
+        <result column="checkout_time" property="checkoutTime"/>
+        <result column="duration_minutes" property="durationMinutes"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- 根据用户ID查询所有报名记录（含活动信息） -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT ar.*
+        FROM activity_registration ar
+        WHERE ar.user_id = #{userId}
+        ORDER BY ar.create_time DESC
+    </select>
+
+    <!-- ==================== 新增：管理员签到统计 ==================== -->
+
+    <!-- 统计某个活动的签到签退数据 -->
+    <select id="selectSignStatsByActivityId" resultType="com.scau.village.module.activity.dto.ActivitySignStatsDTO">
+        SELECT
+            a.id AS activityId,
+            a.title AS activityTitle,
+            COUNT(ar.id) AS totalRegistrations,
+            SUM(CASE WHEN ar.signed_in = 1 THEN 1 ELSE 0 END) AS signedInCount,
+            SUM(CASE WHEN ar.checked_out = 1 THEN 1 ELSE 0 END) AS checkedOutCount
+        FROM activity a
+        LEFT JOIN activity_registration ar ON a.id = ar.activity_id AND ar.tenant_id = #{tenantId}
+        WHERE a.id = #{activityId}
+          AND a.tenant_id = #{tenantId}
+        GROUP BY a.id, a.title
+    </select>
+
+    <!-- 查询某个活动的所有报名明细 -->
+    <select id="selectRegistrationDetailsByActivityId" resultType="com.scau.village.module.activity.dto.RegistrationDetailVO">
+        SELECT
+            ar.id AS registrationId,
+            ar.user_id AS userId,
+            u.real_name AS userName,
+            ar.phone,
+            ar.signed_in AS signedIn,
+            ar.sign_time AS signTime,
+            ar.checked_out AS checkedOut,
+            ar.checkout_time AS checkoutTime,
+            ar.duration_minutes AS durationMinutes,
+            ar.remark
+        FROM activity_registration ar
+        LEFT JOIN user u ON ar.user_id = u.id
+        WHERE ar.activity_id = #{activityId}
+          AND ar.tenant_id = #{tenantId}
+        ORDER BY ar.create_time DESC
+    </select>
+
+</mapper>

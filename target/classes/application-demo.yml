@@ -1,0 +1,86 @@
+server:
+  port: 8081
+  tomcat:
+    connection-timeout: 20000
+    max-threads: 200
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/village_demo_db?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 你的数据库密码
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  main:
+    allow-bean-definition-overriding: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.scau.village.module.**.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    # 演示环境开启 SQL 日志，方便评委看到数据库操作
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+jwt:
+  secret: villageSecretKey2026SecureEnough123!@#
+  expiration: 604800000
+  header: Authorization
+
+# 微信小程序配置（演示环境用真实值）
+wechat:
+  appid: wx61aaa25802e6d8a2
+  secret: 892b4c7ecb1c4ccb5de9eb8d8dd8487e
+
+warning:
+  no-apply-days: 14
+  participation-drop-rate: 0.5
+
+# 演示环境开启 Knife4j，方便现场展示 API 文档
+knife4j:
+  enable: true
+  production: false
+
+# 演示环境开启所有监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# 日志级别配置（演示环境开启 DEBUG，方便现场排错）
+logging:
+  level:
+    com.scau.village: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG

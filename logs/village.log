@@ -1,0 +1,62 @@
+2026-08-15 00:52:03.919 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 6.2.5.Final
+2026-08-15 00:52:03.937 [main] INFO  com.scau.village.VillageApplication - Starting VillageApplication using Java 17.0.19 on DESKTOP-PFETOUB with PID 20816 (E:\Scau\工作\科创\a三下乡\后端\target\classes started by 吴雪盈 in E:\Scau\工作\科创\a三下乡\后端)
+2026-08-15 00:52:03.937 [main] DEBUG com.scau.village.VillageApplication - Running with Spring Boot v2.7.18, Spring v5.3.31
+2026-08-15 00:52:03.938 [main] INFO  com.scau.village.VillageApplication - The following 1 profile is active: "dev"
+2026-08-15 00:52:04.971 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-08-15 00:52:04.976 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-08-15 00:52:05.011 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 18 ms. Found 0 Redis repository interfaces.
+2026-08-15 00:52:05.964 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 8080 (http)
+2026-08-15 00:52:05.971 [main] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-08-15 00:52:05.971 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-08-15 00:52:05.973 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/9.0.83]
+2026-08-15 00:52:06.127 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-08-15 00:52:06.127 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 2146 ms
+2026-08-15 00:52:06.723 [main] DEBUG c.s.v.common.config.SecurityConfig$1 - Filter 'jwtAuthenticationFilter' configured for use
+2026-08-15 00:52:08.957 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerAdapter - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-08-15 00:52:09.014 [main] INFO  o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-08-15 00:52:09.163 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - 99 mappings in 'requestMappingHandlerMapping'
+2026-08-15 00:52:09.205 [main] DEBUG o.s.w.s.h.SimpleUrlHandlerMapping - Patterns [/webjars/**, /**, /upload/**, /swagger-ui*/*swagger-initializer.js, /swagger-ui*/**] in 'resourceHandlerMapping'
+2026-08-15 00:52:09.216 [main] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-08-15 00:52:09.701 [main] WARN  o.s.b.a.s.s.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 5ece387d-fb69-4f3e-9724-88e96eb5499f
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-08-15 00:52:09.880 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@2352c21f, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@23cb8fcb, org.springframework.security.web.context.SecurityContextPersistenceFilter@4a7e469d, org.springframework.security.web.header.HeaderWriterFilter@6fbfd28b, org.springframework.security.web.authentication.logout.LogoutFilter@22617270, com.scau.village.common.config.SecurityConfig$1@733534f9, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@85f5f55, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@248b2091, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@25a2f432, org.springframework.security.web.session.SessionManagementFilter@510e6b93, org.springframework.security.web.access.ExceptionTranslationFilter@5186c801, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@2fd8b081]
+2026-08-15 00:52:09.923 [main] INFO  o.s.b.a.e.web.EndpointLinksResolver - Exposing 2 endpoint(s) beneath base path '/actuator'
+2026-08-15 00:52:09.956 [main] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-08-15 00:52:10.019 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port(s): 8080 (http) with context path ''
+2026-08-15 00:52:10.039 [main] INFO  com.scau.village.VillageApplication - Started VillageApplication in 6.513 seconds (JVM running for 6.862)
+2026-08-15 00:52:14.378 [http-nio-8080-exec-2] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-08-15 00:52:14.380 [http-nio-8080-exec-2] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-08-15 00:52:14.380 [http-nio-8080-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Detected StandardServletMultipartResolver
+2026-08-15 00:52:14.380 [http-nio-8080-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Detected AcceptHeaderLocaleResolver
+2026-08-15 00:52:14.380 [http-nio-8080-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Detected FixedThemeResolver
+2026-08-15 00:52:14.380 [http-nio-8080-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@333a2df2
+2026-08-15 00:52:14.380 [http-nio-8080-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.support.SessionFlashMapManager@43de9fc9
+2026-08-15 00:52:14.380 [http-nio-8080-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
+2026-08-15 00:52:14.380 [http-nio-8080-exec-2] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 0 ms
+2026-08-15 00:52:14.392 [http-nio-8080-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/auth/login", parameters={}
+2026-08-15 00:52:14.396 [http-nio-8080-exec-2] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.scau.village.module.auth.controller.AuthController#login(LoginDto)
+2026-08-15 00:52:14.442 [http-nio-8080-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [LoginDto(phone=13800138001, password=123456)]
+2026-08-15 00:52:14.643 [http-nio-8080-exec-2] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-08-15 00:52:14.787 [http-nio-8080-exec-2] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-08-15 00:52:14.908 [http-nio-8080-exec-2] INFO  c.s.v.m.a.controller.AuthController - 登录尝试，手机号: 13800138001, 匹配结果: true
+2026-08-15 00:52:14.946 [http-nio-8080-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-08-15 00:52:14.947 [http-nio-8080-exec-2] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [Result(code=200, message=success, data=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1MSIsInJvbGUiOiJWSUxMQUdFX0FE (truncated)...]
+2026-08-15 00:52:14.951 [http-nio-8080-exec-2] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-08-15 00:52:44.328 [http-nio-8080-exec-3] DEBUG c.s.v.common.config.SecurityConfig - JWT认证成功: userId=51, role=VILLAGE_ADMIN
+2026-08-15 00:52:44.355 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - POST "/api/policy/publish", parameters={}
+2026-08-15 00:52:44.355 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.scau.village.module.policy.controller.PolicyController#publish(Policy)
+2026-08-15 00:52:44.355 [http-nio-8080-exec-3] DEBUG c.s.v.c.interceptor.JwtInterceptor - 需要认证: uri=/api/policy/publish, method=POST
+2026-08-15 00:52:44.359 [http-nio-8080-exec-3] DEBUG c.s.v.c.interceptor.JwtInterceptor - UserContext 已设置: userId=51, role=VILLAGE_ADMIN, tenantId=1
+2026-08-15 00:52:44.359 [http-nio-8080-exec-3] DEBUG c.s.v.c.interceptor.JwtInterceptor - Token 验证通过，UserContext 已设置
+2026-08-15 00:52:44.378 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [Policy(id=null, tenantId=null, category=医保, title=测试政策, content=这是测试内容, attachmentUrl=, effectiveTim (truncated)...]
+2026-08-15 00:52:44.399 [http-nio-8080-exec-3] INFO  c.s.v.m.p.c.PolicyController - 收到发布政策请求: title=测试政策, category=医保
+2026-08-15 00:52:44.434 [http-nio-8080-exec-3] INFO  c.s.v.m.p.c.PolicyController - 政策发布成功: id=6, title=测试政策
+2026-08-15 00:52:44.435 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [*/*] and supported [application/json, application/*+json, application/json, application/*+json]
+2026-08-15 00:52:44.435 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Writing [Result(code=200, message=success, data=null)]
+2026-08-15 00:52:44.435 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2026-08-15 00:52:50.332 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-08-15 00:52:50.339 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.

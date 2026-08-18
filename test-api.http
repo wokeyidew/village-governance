@@ -1,0 +1,25 @@
+### 1. 先登录，获取管理员 Token
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "phone": "13800138001",
+  "password": "123456"
+}
+
+> {% client.global.set("auth_token", response.body.data); %}
+
+### 2. 发布活动（测试修复后的接口）
+POST http://localhost:8080/api/activity/create
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "title": "测试活动-本地验证",
+  "startTime": "2026-08-10 09:00:00",
+  "endTime": "2026-08-10 12:00:00",
+  "location": "龙胜村广场",
+  "rewardPoints": 10,
+  "description": "这是一个本地接口测试，验证时间格式问题是否修复",
+  "maxParticipants": 50
+}
