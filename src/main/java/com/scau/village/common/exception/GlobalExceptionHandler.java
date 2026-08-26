@@ -9,6 +9,9 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import javax.validation.ConstraintViolationException;
 
@@ -87,6 +90,36 @@ public class GlobalExceptionHandler {
         log.warn("参数校验失败: {}", msg);
         Result<?> result = Result.error(400, msg);
         return new ResponseEntity<>(result, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * 文件上传大小超限异常（multipart 文件大于 max-file-size）
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Result<?>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        log.warn("文件上传大小超限: {}", e.getMessage());
+        Result<?> result = Result.error(400, "文件大小超过限制（最大 10MB），请压缩后重试");
+        return new ResponseEntity<>(result, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * 文件上传异常（multipart 解析失败）
+     */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<Result<?>> handleMultipartException(MultipartException e) {
+        log.warn("文件上传异常: {}", e.getMessage());
+        Result<?> result = Result.error(400, "文件上传失败，请检查文件格式是否正确");
+        return new ResponseEntity<>(result, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * 404 路径未找到异常
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<Result<?>> handleNoHandlerFoundException(NoHandlerFoundException e) {
+        log.warn("接口不存在: {}", e.getRequestURL());
+        Result<?> result = Result.error(404, "接口不存在");
+        return new ResponseEntity<>(result, HttpStatus.NOT_FOUND);
     }
 
     /**

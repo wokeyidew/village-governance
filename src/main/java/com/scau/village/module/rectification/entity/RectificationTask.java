@@ -1,6 +1,8 @@
 package com.scau.village.module.rectification.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -19,23 +21,28 @@ public class RectificationTask {
 
     /**
      * 主键ID（雪花算法）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失（Long 超出 JS Number 安全范围）
      */
     @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
      * 关联积分申请/评分记录ID（points_apply.id）
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long applyId;
 
     /**
      * 责任户主用户ID（关联user表）
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long userId;
 
     /**
      * 关联检查批次ID（inspection_batch.id）
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long batchId;
 
     /**
@@ -82,6 +89,7 @@ public class RectificationTask {
     /**
      * 复核人ID（管理员）
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long reviewerId;
 
     /**
@@ -108,6 +116,7 @@ public class RectificationTask {
      * 检查人ID（管理员）
      * 即创建整改任务时的评分人/检查人
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long inspectorId;
 
     /**

@@ -54,7 +54,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         "/static/**",                // 静态资源
                         "/upload/**",                // 上传文件访问
                         "/actuator/**",              // 健康检查
-                        "/favicon.ico"
+                        "/favicon.ico",
+                        // ====== 红黑榜接口公开（无需认证） ======
+                        "/api/inspection/snapshot/**",
+                        "/api/inspection/snapshot/latest",
+                        "/api/inspection/snapshot/compare"
                 ).permitAll()
 
                 // ============ 通知模块（GET 公开，POST/PUT/DELETE 需管理员） ============

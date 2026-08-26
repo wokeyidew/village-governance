@@ -6,6 +6,7 @@ import com.scau.village.module.points.entity.InspectionHousehold;
 import com.scau.village.module.points.mapper.InspectionHouseholdMapper;
 import com.scau.village.module.points.service.InspectionHouseholdService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,9 +76,33 @@ public class InspectionHouseholdServiceImpl
             household.setCreateTime(LocalDateTime.now());
             household.setUpdateTime(LocalDateTime.now());
             household.setDeleted(0);
-            save(household);
-            log.debug("新增汇总记录成功，batchId={}, userId={}, totalScore={}", batchId, userId, totalScore);
-            return household;
+
+            try {
+                save(household);
+                log.debug("新增汇总记录成功，batchId={}, userId={}, totalScore={}", batchId, userId, totalScore);
+                return household;
+            } catch (DuplicateKeyException e) {
+                // 并发场景下可能同时插入导致唯一键冲突，转为更新
+                log.warn("插入汇总记录发生唯一键冲突，转为更新，batchId={}, userId={}", batchId, userId);
+                // 重新查询
+                existing = baseMapper.selectByBatchIdAndUserId(batchId, userId);
+                if (existing != null) {
+                    existing.setTotalScore(totalScore);
+                    if (detailJson != null) {
+                        existing.setDetailJson(detailJson);
+                    }
+                    if (remark != null) {
+                        existing.setRemark(remark);
+                    }
+                    existing.setInspectorId(inspectorIdLong);
+                    existing.setUpdateTime(LocalDateTime.now());
+                    updateById(existing);
+                    log.debug("冲突后更新汇总记录成功，batchId={}, userId={}", batchId, userId);
+                    return existing;
+                }
+                // 如果查询不到（极端情况），重新抛出异常
+                throw e;
+            }
         }
     }
 }

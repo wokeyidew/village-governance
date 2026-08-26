@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.scau.village.module.points.entity.InspectionHousehold;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 检查户汇总 Mapper 接口
@@ -21,6 +22,7 @@ public interface InspectionHouseholdMapper extends BaseMapper<InspectionHousehol
      * @param userId  用户ID
      * @return 汇总记录，不存在则返回 null
      */
-    InspectionHousehold selectByBatchIdAndUserId(@Param("batchId") Long batchId, @Param("userId") Integer userId);
-
+    @Select("SELECT * FROM inspection_household WHERE batch_id = #{batchId} AND user_id = #{userId} AND deleted = 0")
+    InspectionHousehold selectByBatchIdAndUserId(@Param("batchId") Long batchId, 
+                                                  @Param("userId") Integer userId);
 }

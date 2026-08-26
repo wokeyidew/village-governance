@@ -82,13 +82,28 @@ public class RectificationController {
      */
     @GetMapping("/task/{taskId}")
     public Result<RectificationDetailVO> getTaskDetail(@PathVariable Long taskId) {
+        // 🔥 增加日志：记录入参
+        log.info("【整改详情-Controller】村民端查询整改任务详情，taskId={}", taskId);
+
         UserContext ctx = UserContext.get();
         if (ctx == null || ctx.getUserId() == null) {
+            log.warn("【整改详情-Controller】用户未登录，taskId={}", taskId);
             return Result.error(401, "请先登录");
         }
         Long userId = ctx.getUserId();
-        RectificationDetailVO detail = rectificationTaskService.getTaskDetail(taskId, userId);
-        return Result.success(detail);
+
+        log.info("【整改详情-Controller】当前用户ID={}, taskId={}", userId, taskId);
+
+        try {
+            RectificationDetailVO detail = rectificationTaskService.getTaskDetail(taskId, userId);
+            log.info("【整改详情-Controller】查询成功，taskId={}, userName={}",
+                    taskId, detail != null ? detail.getUserName() : "null");
+            return Result.success(detail);
+        } catch (Exception e) {
+            log.error("【整改详情-Controller】查询整改任务详情失败，taskId={}, userId={}, error={}",
+                    taskId, userId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
@@ -162,9 +177,21 @@ public class RectificationController {
      */
     @GetMapping("/admin/task/{taskId}")
     public Result<RectificationDetailVO> getAdminTaskDetail(@PathVariable Long taskId) {
+        // 🔥 增加日志：记录入参
+        log.info("【整改详情-Controller】管理员端查询整改任务详情，taskId={}", taskId);
+
         SecurityUtils.checkRole("VILLAGE_ADMIN", "GRID_MEMBER");
-        RectificationDetailVO detail = rectificationTaskService.getAdminTaskDetail(taskId);
-        return Result.success(detail);
+
+        try {
+            RectificationDetailVO detail = rectificationTaskService.getAdminTaskDetail(taskId);
+            log.info("【整改详情-Controller】管理员端查询成功，taskId={}, userName={}",
+                    taskId, detail != null ? detail.getUserName() : "null");
+            return Result.success(detail);
+        } catch (Exception e) {
+            log.error("【整改详情-Controller】管理员端查询整改任务详情失败，taskId={}, error={}",
+                    taskId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**

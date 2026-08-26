@@ -76,7 +76,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         apply.setDescription(dto.getDescription());
         apply.setImages(dto.getImages());
         apply.setStatus("pending");
-        apply.setSourceType("user");  // 标识为村民申报
+        apply.setSourceType("user");
         apply.setCreateTime(LocalDateTime.now());
         save(apply);
     }
@@ -88,7 +88,6 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         if (apply == null || !"pending".equals(apply.getStatus())) {
             throw new BusinessException("申报记录不存在或已处理");
         }
-        // 仅处理村民申报的审核，管理员评分的无需审核
         if (!"user".equals(apply.getSourceType())) {
             throw new BusinessException("该记录非村民申报，无需审核");
         }
@@ -102,11 +101,9 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             PointsRule rule = ruleMapper.selectById(apply.getRuleId());
             User user = userMapper.selectById(apply.getUserId());
 
-            // 增加用户积分
             user.setPoints(user.getPoints() + rule.getPoints());
             userMapper.updateById(user);
 
-            // 记录积分流水
             PointsFlow flow = new PointsFlow();
             flow.setUserId(user.getId());
             flow.setChangeAmount(rule.getPoints());
@@ -152,10 +149,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             throw new BusinessException("部分规则不存在或已被删除");
         }
 
-        // 检查是否包含扣分规则
         boolean hasPenaltyRule = rules.stream().anyMatch(rule -> rule.getPoints() < 0);
 
-        // 如果包含扣分规则，强制要求上传照片
         if (hasPenaltyRule) {
             List<String> images = dto.getImages();
             if (images == null || images.isEmpty()) {
@@ -174,7 +169,6 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             if (rule.getPoints() < 0) {
                 penaltyRules.add(rule);
             }
-            // 构建明细
             ScoreDetail detail = new ScoreDetail();
             detail.setRuleId(rule.getId());
             detail.setRuleName(rule.getRuleName());
@@ -182,45 +176,37 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             detailList.add(detail);
         }
 
-        // 4. 处理图片：添加水印并上传（仅扣分规则的照片）
         List<String> watermarkedImageUrls = null;
         if (hasPenaltyRule && dto.getImages() != null && !dto.getImages().isEmpty()) {
-            // TODO: 实际需要调用上传服务，将图片添加水印后上传获取URL
-            // 此处简化：直接使用原始URL，但应调用 WatermarkUtils 处理
-            // 示例：watermarkedImageUrls = uploadService.uploadWatermarkedImages(dto.getImages(), ...)
             watermarkedImageUrls = dto.getImages();
             log.info("扣分规则照片数量：{}", watermarkedImageUrls.size());
         }
 
-        // 5. 生成检查日期（取批次日期）
         LocalDate inspectionDate = batch.getInspectionDate();
 
-        // 6. 逐条生成 PointsApply 记录（每条规则一条记录）
         for (PointsRule rule : rules) {
             PointsApply apply = new PointsApply();
             apply.setTenantId(tenantId);
             apply.setUserId(dto.getUserId());
             apply.setRuleId(rule.getId());
             apply.setDescription(dto.getDescription() != null ? dto.getDescription() : rule.getRuleName() + "（现场评分）");
-            // 图片存储：如果有水印图片，存储水印后的URL；否则存储原始图片
             if (hasPenaltyRule && watermarkedImageUrls != null && !watermarkedImageUrls.isEmpty()) {
                 apply.setImages(String.join(",", watermarkedImageUrls));
             } else {
                 apply.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
             }
-            apply.setStatus("approved");        // 管理员评分直接生效，无需审核
-            apply.setAuditorId(inspectorId);    // 评分人即为审核人
+            apply.setStatus("approved");
+            apply.setAuditorId(inspectorId);
             apply.setAuditRemark("管理员现场评分");
             apply.setAuditTime(LocalDateTime.now());
             apply.setSourceType("admin");
             apply.setInspectorId(inspectorId);
             apply.setInspectionBatchId(dto.getBatchId());
             apply.setInspectionDate(inspectionDate);
-            apply.setHasEvidence(hasPenaltyRule ? 1 : 0);  // 标记是否有证据
+            apply.setHasEvidence(hasPenaltyRule ? 1 : 0);
             apply.setCreateTime(LocalDateTime.now());
             save(apply);
 
-            // 记录积分流水（直接生效）
             PointsFlow flow = new PointsFlow();
             flow.setUserId(user.getId());
             flow.setChangeAmount(rule.getPoints());
@@ -232,37 +218,58 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
             // 如果是扣分规则，保存证据和整改任务
             if (rule.getPoints() < 0) {
-                // 保存证据
+                // ========== 保存证据（增加详细日志和异常捕获） ==========
                 if (watermarkedImageUrls != null && !watermarkedImageUrls.isEmpty()) {
                     String photoUrls = String.join(",", watermarkedImageUrls);
-                    ScoreEvidence evidence = new ScoreEvidence();
-                    evidence.setApplyId(apply.getId().longValue());
-                    evidence.setPhotoUrls(photoUrls);
-                    evidence.setPhotoCount(watermarkedImageUrls.size());
-                    evidence.setLocation(""); // 可从dto或前端获取
-                    evidence.setInspectorId(inspectorId.longValue());
-                    evidence.setBatchId(dto.getBatchId());
-                    evidence.setRuleVersion("1.0"); // 可根据实际版本号填充
-                    evidence.setRuleName(rule.getRuleName());
-                    evidence.setUserName(user.getRealName());
-                    evidence.setHasWatermark(1); // 假设水印已添加
-                    evidence.setCreateTime(LocalDateTime.now());
-                    scoreEvidenceService.save(evidence);
-                    log.info("保存证据成功，applyId={}", apply.getId());
+                    log.info("【证据保存】开始保存证据，applyId={}, 照片数量={}, 照片URL={}",
+                            apply.getId(), watermarkedImageUrls.size(), photoUrls);
+
+                    try {
+                        ScoreEvidence evidence = new ScoreEvidence();
+                        evidence.setApplyId(apply.getId().longValue());
+                        evidence.setPhotoUrls(photoUrls);
+                        evidence.setPhotoCount(watermarkedImageUrls.size());
+                        evidence.setLocation("");
+                        evidence.setInspectorId(inspectorId.longValue());
+                        evidence.setBatchId(dto.getBatchId());
+                        evidence.setRuleVersion("1.0");
+                        evidence.setRuleName(rule.getRuleName());
+                        evidence.setUserName(user.getRealName());
+                        evidence.setHasWatermark(1);
+                        evidence.setCreateTime(LocalDateTime.now());
+                        evidence.setTenantId(tenantId);
+
+                        scoreEvidenceService.save(evidence);
+                        log.info("【证据保存】✅ 保存证据成功，applyId={}, evidenceId={}",
+                                apply.getId(), evidence.getId());
+
+                    } catch (Exception e) {
+                        // 捕获异常，不影响主流程（只记录日志）
+                        log.error("【证据保存】❌ 保存证据失败，applyId={}, error={}",
+                                apply.getId(), e.getMessage(), e);
+                    }
+                } else {
+                    // 扣分项但没有照片，记录警告日志
+                    log.warn("【证据保存】⚠️ 扣分项但没有照片，applyId={}, rule={}, 请检查前端是否上传图片",
+                            apply.getId(), rule.getRuleName());
                 }
 
-                // 自动创建整改任务
-                rectificationTaskService.createTask(
-                        apply.getId().longValue(),
-                        dto.getUserId().longValue(),
-                        dto.getBatchId(),
-                        rule.getRuleName(),
-                        "请按照要求进行整改，整改完成后拍照上传。",
-                        LocalDateTime.now().plusDays(7), // 截止时间7天后
-                        watermarkedImageUrls != null ? String.join(",", watermarkedImageUrls) : null,
-                        inspectorId.longValue()
-                );
-                log.info("自动创建整改任务成功，applyId={}", apply.getId());
+                // ========== 自动创建整改任务 ==========
+                try {
+                    rectificationTaskService.createTask(
+                            apply.getId().longValue(),
+                            dto.getUserId().longValue(),
+                            dto.getBatchId(),
+                            rule.getRuleName(),
+                            "请按照要求进行整改，整改完成后拍照上传。",
+                            LocalDateTime.now().plusDays(7),
+                            watermarkedImageUrls != null ? String.join(",", watermarkedImageUrls) : null,
+                            inspectorId.longValue()
+                    );
+                    log.info("自动创建整改任务成功，applyId={}", apply.getId());
+                } catch (Exception e) {
+                    log.error("创建整改任务失败，applyId={}, error={}", apply.getId(), e.getMessage(), e);
+                }
             }
         }
 

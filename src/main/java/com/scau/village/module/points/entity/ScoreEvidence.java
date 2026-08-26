@@ -1,6 +1,8 @@
 package com.scau.village.module.points.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -20,13 +22,17 @@ public class ScoreEvidence {
 
     /**
      * 主键ID
+     * 序列化为字符串，避免前端 JavaScript 精度丢失（Long 超出 JS Number 安全范围）
      */
     @TableId(type = IdType.AUTO)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
      * 关联积分申请/评分记录ID（points_apply.id）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long applyId;
 
     /**
@@ -47,12 +53,16 @@ public class ScoreEvidence {
 
     /**
      * 检查人ID（管理员ID）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long inspectorId;
 
     /**
      * 关联检查批次ID（inspection_batch.id）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long batchId;
 
     /**
@@ -83,6 +93,12 @@ public class ScoreEvidence {
      */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    /**
+     * 租户ID（多租户隔离）
+     * 冗余存储，便于按租户查询和数据隔离
+     */
+    private Integer tenantId;
 
     /**
      * 逻辑删除标记（0-未删除，1-已删除）

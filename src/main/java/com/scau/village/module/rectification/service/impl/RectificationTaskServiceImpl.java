@@ -133,17 +133,34 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
 
     @Override
     public RectificationDetailVO getTaskDetail(Long taskId, Long userId) {
+        // 🔥 增加日志：记录入参
+        log.info("【整改详情-村民端】开始查询，taskId={}, userId={}", taskId, userId);
+
         if (taskId == null || userId == null) {
+            log.warn("【整改详情-村民端】参数不完整，taskId={}, userId={}", taskId, userId);
             throw new BusinessException("参数不完整");
         }
+
+        // 直接使用 MyBatis-Plus 的 getById 查询（不会自动添加 tenant_id 过滤）
         RectificationTask task = getById(taskId);
+
+        // 🔥 增加日志：记录查询结果
         if (task == null) {
-            throw new BusinessException("整改任务不存在");
+            log.warn("【整改详情-村民端】查询结果为空，taskId={}，数据库中不存在该记录", taskId);
+            throw new BusinessException("整改任务不存在，taskId=" + taskId);
         }
+
+        log.info("【整改详情-村民端】查询到记录，taskId={}, userId={}, status={}, applyId={}",
+                task.getId(), task.getUserId(), task.getStatus(), task.getApplyId());
+
         // 权限校验：只能查看自己的任务
         if (!task.getUserId().equals(userId)) {
+            log.warn("【整改详情-村民端】权限校验失败，taskId={}, 任务所属用户={}, 当前用户={}",
+                    taskId, task.getUserId(), userId);
             throw new BusinessException("无权查看此任务");
         }
+
+        log.info("【整改详情-村民端】权限校验通过，taskId={}", taskId);
         return convertToDetailVO(task);
     }
 
@@ -204,13 +221,26 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
 
     @Override
     public RectificationDetailVO getAdminTaskDetail(Long taskId) {
+        // 🔥 增加日志：记录入参
+        log.info("【整改详情-管理员端】开始查询，taskId={}", taskId);
+
         if (taskId == null) {
+            log.warn("【整改详情-管理员端】taskId 为空");
             throw new BusinessException("任务ID不能为空");
         }
+
+        // 直接使用 MyBatis-Plus 的 getById 查询（不会自动添加 tenant_id 过滤）
         RectificationTask task = getById(taskId);
+
+        // 🔥 增加日志：记录查询结果
         if (task == null) {
-            throw new BusinessException("整改任务不存在");
+            log.warn("【整改详情-管理员端】查询结果为空，taskId={}，数据库中不存在该记录", taskId);
+            throw new BusinessException("整改任务不存在，taskId=" + taskId);
         }
+
+        log.info("【整改详情-管理员端】查询到记录，taskId={}, userId={}, status={}, applyId={}",
+                task.getId(), task.getUserId(), task.getStatus(), task.getApplyId());
+
         return convertToDetailVO(task);
     }
 

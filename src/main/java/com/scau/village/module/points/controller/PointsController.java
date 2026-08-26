@@ -23,6 +23,7 @@ import com.scau.village.module.points.vo.PointsFlowVO;
 import com.scau.village.module.user.entity.User;
 import com.scau.village.module.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/points")
 @RequiredArgsConstructor
@@ -97,41 +99,8 @@ public class PointsController {
     public Result<Page<PointsFlowVO>> flow(@RequestParam(defaultValue = "1") Integer page,
                                            @RequestParam(defaultValue = "10") Integer size) {
         Long userId = UserContext.get().getUserId();
-        Page<PointsFlow> pageParam = new Page<>(page, size);
-        Page<PointsFlow> result = flowService.lambdaQuery()
-                .eq(PointsFlow::getUserId, userId)
-                .orderByDesc(PointsFlow::getCreateTime)
-                .page(pageParam);
-
-        // 类型映射
-        Map<String, String> typeMap = new HashMap<>();
-        typeMap.put("apply", "积分申报");
-        typeMap.put("exchange", "积分兑换");
-        typeMap.put("activity", "活动奖励");
-        typeMap.put("admin", "管理员调整");
-
-        List<PointsFlowVO> voList = result.getRecords().stream().map(flow -> {
-            PointsFlowVO vo = new PointsFlowVO();
-            BeanUtils.copyProperties(flow, vo);
-            vo.setSourceTypeText(typeMap.getOrDefault(flow.getSourceType(), flow.getSourceType()));
-
-            // 如果是申报类型，查询图片和描述
-            if ("apply".equals(flow.getSourceType()) && flow.getSourceId() != null) {
-                PointsApply apply = pointsApplyMapper.selectById(flow.getSourceId());
-                if (apply != null) {
-                    vo.setImages(apply.getImages());
-                    vo.setDescription(apply.getDescription());
-                    // 如果 remark 为空，用描述补充
-                    if (vo.getRemark() == null || vo.getRemark().isEmpty()) {
-                        vo.setRemark(apply.getDescription());
-                    }
-                }
-            }
-            return vo;
-        }).collect(Collectors.toList());
-
-        Page<PointsFlowVO> voPage = new Page<>(pageParam.getCurrent(), pageParam.getSize(), result.getTotal());
-        voPage.setRecords(voList);
+        // 调用 Service 方法获取含批次信息的流水数据
+        Page<PointsFlowVO> voPage = flowService.getFlowPage(userId.intValue(), page, size);
         return Result.success(voPage);
     }
 
@@ -259,22 +228,32 @@ public class PointsController {
      */
     @GetMapping("/evidence/{applyId}")
     public Result<EvidenceVO> getEvidence(@PathVariable Long applyId) {
+        // 🔥 增加日志：记录入参
+        log.info("【证据查询】收到请求，applyId={}", applyId);
+
         UserContext ctx = UserContext.get();
         if (ctx == null || ctx.getUserId() == null) {
+            log.warn("【证据查询】用户未登录，applyId={}", applyId);
             return Result.error(401, "请先登录");
         }
 
         // 1. 查询积分记录
         PointsApply apply = applyService.getById(applyId);
         if (apply == null) {
+            log.warn("【证据查询】积分记录不存在，applyId={}", applyId);
             return Result.error(404, "积分记录不存在");
         }
+
+        log.info("【证据查询】积分记录存在，applyId={}, userId={}, hasEvidence={}",
+                applyId, apply.getUserId(), apply.getHasEvidence());
 
         // 2. 权限校验：村民只能查看自己的记录，管理员可查看所有
         Long currentUserId = ctx.getUserId();
         String role = ctx.getRole();
         boolean isAdmin = "VILLAGE_ADMIN".equals(role) || "GRID_MEMBER".equals(role) || "SUPER_ADMIN".equals(role);
         if (!isAdmin && !apply.getUserId().equals(currentUserId.intValue())) {
+            log.warn("【证据查询】权限校验失败，applyId={}, 记录所属用户={}, 当前用户={}",
+                    applyId, apply.getUserId(), currentUserId);
             return Result.error(403, "无权查看此记录的证据");
         }
 
@@ -282,10 +261,14 @@ public class PointsController {
         ScoreEvidence evidence = scoreEvidenceService.getByApplyId(applyId);
         if (evidence == null) {
             // 如果没有证据，返回空数据（前端可根据 hasEvidence 字段判断）
+            log.info("【证据查询】未找到证据，applyId={}", applyId);
             EvidenceVO emptyVo = new EvidenceVO();
             emptyVo.setHasEvidence(false);
             return Result.success(emptyVo);
         }
+
+        log.info("【证据查询】证据存在，applyId={}, evidenceId={}, photoUrls={}",
+                applyId, evidence.getId(), evidence.getPhotoUrls());
 
         // 4. 构建返回VO
         EvidenceVO vo = new EvidenceVO();
@@ -301,6 +284,7 @@ public class PointsController {
         vo.setUserName(evidence.getUserName());
         vo.setCreateTime(evidence.getCreateTime());
 
+        log.info("【证据查询】证据返回成功，applyId={}", applyId);
         return Result.success(vo);
     }
 }

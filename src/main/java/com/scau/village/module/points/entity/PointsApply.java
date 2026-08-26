@@ -1,6 +1,8 @@
 package com.scau.village.module.points.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -91,8 +93,10 @@ public class PointsApply {
 
     /**
      * 检查批次ID（关联inspection_batch.id），管理员评分时必填
+     * 雪花算法生成的 Long 类型，序列化为字符串避免前端 JS 精度丢失
      */
     @TableField(value = "inspection_batch_id")
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long inspectionBatchId;
 
     /**

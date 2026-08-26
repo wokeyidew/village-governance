@@ -1,6 +1,8 @@
 package com.scau.village.module.appeal.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -19,18 +21,24 @@ public class AppealRecord {
 
     /**
      * 主键ID（雪花算法）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失（Long 超出 JS Number 安全范围）
      */
     @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
      * 关联积分申请/评分记录ID（points_apply.id）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long applyId;
 
     /**
      * 申诉人用户ID
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long userId;
 
     /**
@@ -67,7 +75,9 @@ public class AppealRecord {
 
     /**
      * 复核人ID（管理员）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long reviewerId;
 
     /**
@@ -82,7 +92,9 @@ public class AppealRecord {
 
     /**
      * 关联检查批次ID（便于快速查询）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long batchId;
 
     /**

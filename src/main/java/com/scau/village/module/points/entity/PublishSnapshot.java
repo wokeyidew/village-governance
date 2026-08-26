@@ -1,6 +1,8 @@
 package com.scau.village.module.points.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -20,13 +22,17 @@ public class PublishSnapshot {
 
     /**
      * 主键ID（雪花算法）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失（Long 超出 JS Number 安全范围）
      */
     @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
      * 关联检查批次ID（inspection_batch.id）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long batchId;
 
     /**
@@ -65,7 +71,9 @@ public class PublishSnapshot {
 
     /**
      * 发布人ID（管理员）
+     * 序列化为字符串，避免前端 JavaScript 精度丢失
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long publishBy;
 
     /**
@@ -96,112 +104,6 @@ public class PublishSnapshot {
     @TableLogic
     private Integer deleted;
 
-    // ==================== 手动 getter/setter（确保 Lombok 未生效时编译通过） ====================
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getBatchId() {
-        return batchId;
-    }
-
-    public void setBatchId(Long batchId) {
-        this.batchId = batchId;
-    }
-
-    public String getMonth() {
-        return month;
-    }
-
-    public void setMonth(String month) {
-        this.month = month;
-    }
-
-    public String getSnapshotData() {
-        return snapshotData;
-    }
-
-    public void setSnapshotData(String snapshotData) {
-        this.snapshotData = snapshotData;
-    }
-
-    public String getRedList() {
-        return redList;
-    }
-
-    public void setRedList(String redList) {
-        this.redList = redList;
-    }
-
-    public String getBlackList() {
-        return blackList;
-    }
-
-    public void setBlackList(String blackList) {
-        this.blackList = blackList;
-    }
-
-    public LocalDateTime getPublishTime() {
-        return publishTime;
-    }
-
-    public void setPublishTime(LocalDateTime publishTime) {
-        this.publishTime = publishTime;
-    }
-
-    public Long getPublishBy() {
-        return publishBy;
-    }
-
-    public void setPublishBy(Long publishBy) {
-        this.publishBy = publishBy;
-    }
-
-    public String getPublishByName() {
-        return publishByName;
-    }
-
-    public void setPublishByName(String publishByName) {
-        this.publishByName = publishByName;
-    }
-
-    public Integer getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(Integer tenantId) {
-        this.tenantId = tenantId;
-    }
-
-    public LocalDateTime getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(LocalDateTime createTime) {
-        this.createTime = createTime;
-    }
-
-    public LocalDateTime getUpdateTime() {
-        return updateTime;
-    }
-
-    public void setUpdateTime(LocalDateTime updateTime) {
-        this.updateTime = updateTime;
-    }
-
-    public Integer getDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(Integer deleted) {
-        this.deleted = deleted;
-    }
-
     // ==================== 内部类：榜单条目 ====================
 
     /**
@@ -209,53 +111,17 @@ public class PublishSnapshot {
      */
     @Data
     public static class SnapshotItem {
+        /**
+         * 用户ID
+         * 序列化为字符串，避免前端 JavaScript 精度丢失
+         */
+        @JsonSerialize(using = ToStringSerializer.class)
         private Long userId;
+
         private String userName;
         private Integer totalScore;
         private Integer rank;
         private String tag; // "red" 或 "black" 或 "normal"
-
-        // ==================== 手动 getter/setter ====================
-
-        public Long getUserId() {
-            return userId;
-        }
-
-        public void setUserId(Long userId) {
-            this.userId = userId;
-        }
-
-        public String getUserName() {
-            return userName;
-        }
-
-        public void setUserName(String userName) {
-            this.userName = userName;
-        }
-
-        public Integer getTotalScore() {
-            return totalScore;
-        }
-
-        public void setTotalScore(Integer totalScore) {
-            this.totalScore = totalScore;
-        }
-
-        public Integer getRank() {
-            return rank;
-        }
-
-        public void setRank(Integer rank) {
-            this.rank = rank;
-        }
-
-        public String getTag() {
-            return tag;
-        }
-
-        public void setTag(String tag) {
-            this.tag = tag;
-        }
 
         // ==================== 便捷方法 ====================
 

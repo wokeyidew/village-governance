@@ -7,6 +7,9 @@ import java.io.Serializable;
 /**
  * AI匹配结果视图对象
  * 用于前端展示AI推荐的积分规则
+ * 
+ * 当 AI 服务不可用时，后端会返回降级模式数据（isDemo = true），
+ * 前端可根据该字段展示“AI演示”标识，避免用户误以为真实AI服务已生效
  *
  * @author system
  * @since 2026-08-19
@@ -18,6 +21,7 @@ public class AiMatchVO implements Serializable {
 
     /**
      * 匹配到的规则ID（数据库中的规则ID）
+     * 当 AI 服务返回规则索引时，前端可根据索引从本地规则列表中获取规则ID
      */
     private Long ruleId;
 
@@ -56,6 +60,13 @@ public class AiMatchVO implements Serializable {
      * 置信度等级：高、中、低
      */
     private String confidenceLevel;
+
+    /**
+     * 是否为降级模式（AI 服务不可用时的预设结果）
+     * true：AI 服务不可用，返回的是预设演示结果
+     * false：AI 服务正常，返回的是真实匹配结果
+     */
+    private Boolean isDemo;
 
     // ==================== 便捷方法 ====================
 

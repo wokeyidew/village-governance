@@ -1,9 +1,11 @@
 package com.scau.village.module.points.dto;
 
 import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -46,6 +48,18 @@ public class ScoreSubmitDto {
      * 前端以 multipart/form-data 或 base64 形式上传多张图片
      */
     private List<String> images;
+
+    /**
+     * 容错处理：前端可能传空字符串 "" 或 [""]，转为空列表
+     * 避免 Spring 无法将空字符串解析为 List<String> 导致 500
+     */
+    public void setImages(List<String> images) {
+        if (images != null && images.size() == 1 && StringUtils.isBlank(images.get(0))) {
+            this.images = new ArrayList<>();
+        } else {
+            this.images = images;
+        }
+    }
 
     /**
      * 检查当前选择的规则中是否包含扣分项（points < 0）

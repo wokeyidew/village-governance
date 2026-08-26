@@ -1,7 +1,7 @@
 -- ======================================================
 -- 龙胜惠民通 · 完整数据库初始化脚本
--- 版本：1.2.0
--- 日期：2026-08-19
+-- 版本：1.2.1
+-- 日期：2026-08-25
 -- 说明：包含全部表结构 + 基础数据 + 测试数据
 --       新增 feedback 表（意见反馈）
 --       为 notice、policy 表增加 deleted 字段（逻辑删除）
@@ -13,6 +13,7 @@
 --       新增 publish_snapshot 表（红黑榜公示快照）
 --       新增 offline_sync_record 表（离线同步记录）
 --       为 points_apply 表增加 has_evidence 字段（是否有证据）
+--       为 score_evidence 表增加 tenant_id 字段（租户隔离）  ← 新增这一行
 -- 执行：mysql -u root -p < init_full.sql
 -- ======================================================
 
@@ -688,6 +689,7 @@ CREATE TABLE `score_evidence` (
     `rule_name` varchar(100) DEFAULT NULL COMMENT '扣分规则名称（冗余）',
     `user_name` varchar(50) DEFAULT NULL COMMENT '户主姓名（冗余）',
     `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `tenant_id` int NOT NULL DEFAULT 1 COMMENT '租户ID',
     `deleted` tinyint(1) DEFAULT '0' COMMENT '逻辑删除标记',
     PRIMARY KEY (`id`),
     KEY `idx_apply_id` (`apply_id`),

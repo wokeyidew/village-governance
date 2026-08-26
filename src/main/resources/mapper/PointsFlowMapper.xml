@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.scau.village.module.points.mapper.PointsFlowMapper">
+
+    <!-- 结果映射：PointsFlowVO -->
+    <resultMap id="PointsFlowVOMap" type="com.scau.village.module.points.vo.PointsFlowVO">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="change_amount" property="changeAmount"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_id" property="sourceId"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+        <!-- 新增字段映射 -->
+        <result column="batch_id" property="batchId"/>
+        <result column="batch_name" property="batchName"/>
+        <!-- 以下字段来自 points_apply 表 -->
+        <result column="images" property="images"/>
+        <result column="description" property="description"/>
+    </resultMap>
+
+    <!-- 分页查询用户积分流水（含关联批次信息） -->
+    <select id="selectFlowPage" resultMap="PointsFlowVOMap">
+        SELECT
+            pf.id,
+            pf.user_id,
+            pf.change_amount,
+            pf.source_type,
+            pf.source_id,
+            pf.remark,
+            pf.create_time,
+            pa.images,
+            pa.description,
+            pa.inspection_batch_id AS batch_id,
+            ib.batch_name
+        FROM points_flow pf
+        LEFT JOIN points_apply pa ON pf.source_id = pa.id
+            AND pf.source_type IN ('admin_inspection', 'apply')
+        LEFT JOIN inspection_batch ib ON pa.inspection_batch_id = ib.id
+        WHERE pf.user_id = #{userId}
+        ORDER BY pf.create_time DESC
+    </select>
+
+</mapper>
