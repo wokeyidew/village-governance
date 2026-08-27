@@ -5,6 +5,12 @@ import lombok.Data;
 
 /**
  * 用户信息展示VO（包含脱敏处理）
+ * 
+ * 积分体系说明（v2.0）：
+ * - totalEarnedPoints（总获得积分）：历史累计获得的积分总和，只增不减，兑换时不扣减
+ * - availablePoints（可用积分）：当前可使用的积分余额，获得时增加，兑换时扣减
+ * - points（当前积分余额）：保留用于兼容，建议前端优先使用 availablePoints
+ *
  * @author system
  * @since 2026-07-17
  */
@@ -18,6 +24,21 @@ public class UserVO {
     private String avatar;      // 头像URL
     private String role;        // 用户角色（VILLAGER / VILLAGE_ADMIN / GRID_MEMBER / TOWN_ADMIN / SUPER_ADMIN）
     private Integer residentProfileId; // 关联居民档案ID
+
+    // ==================== v2.0 新增字段 ====================
+
+    /**
+     * 总获得积分（永久累加，只增不减）
+     * 用于：荣誉总榜排名、年度评优、历史荣誉展示
+     * 兑换商品时不扣减此字段
+     */
+    private Integer totalEarnedPoints;
+
+    /**
+     * 当前可用积分（兑换时扣减）
+     * 用于：积分兑换商品、参与活动消耗
+     */
+    private Integer availablePoints;
 
     /**
      * 手机号脱敏（中间4位替换为****）

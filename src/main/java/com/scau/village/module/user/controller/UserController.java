@@ -19,6 +19,12 @@ import java.time.LocalDateTime;
 
 /**
  * 用户模块控制器
+ * 
+ * 积分体系说明（v2.0）：
+ * - total_earned_points（总获得积分）：历史累计获得的积分总和，只增不减，兑换时不扣减
+ * - available_points（可用积分）：当前可使用的积分余额，获得时增加，兑换时扣减
+ * - points（当前积分余额）：保留用于兼容，前端应优先使用 availablePoints
+ *
  * @author system
  * @since 2026-07-17
  */
@@ -49,8 +55,10 @@ public class UserController {
         user.setTenantId(dto.getTenantId());
         user.setRole("VILLAGER");
         user.setPoints(0);
-        user.setRealName(dto.getRealName());   // 真实姓名
-        user.setAvatar(dto.getAvatar());       // 头像URL（可为空）
+        user.setTotalEarnedPoints(0);
+        user.setAvailablePoints(0);
+        user.setRealName(dto.getRealName());
+        user.setAvatar(dto.getAvatar());
         user.setCreateTime(LocalDateTime.now());
         userService.save(user);
         return Result.success(null);
@@ -58,7 +66,7 @@ public class UserController {
 
     /**
      * 获取当前登录用户信息（已脱敏）
-     * 返回 UserVO，包含头像和角色字段
+     * 返回 UserVO，包含头像、角色、积分信息（v2.0新增 totalEarnedPoints 和 availablePoints）
      */
     @GetMapping("/profile")
     public Result<UserVO> getProfile() {
@@ -80,8 +88,12 @@ public class UserController {
         vo.setIdCard(user.getIdCard());
         vo.setPoints(user.getPoints());
         vo.setAvatar(user.getAvatar());
-        vo.setRole(user.getRole());          // ✅ 返回角色字段
-        vo.setResidentProfileId(user.getResidentProfileId()); // ✅ 返回关联档案ID
+        vo.setRole(user.getRole());
+        vo.setResidentProfileId(user.getResidentProfileId());
+
+        // ====== v2.0 新增：设置积分新字段 ======
+        vo.setTotalEarnedPoints(user.getTotalEarnedPoints());
+        vo.setAvailablePoints(user.getAvailablePoints());
 
         return Result.success(vo);
     }
@@ -96,12 +108,12 @@ public class UserController {
         if (ctx == null || ctx.getUserId() == null) {
             return Result.error(401, "请先登录");
         }
-        Integer userId = ctx.getUserId().intValue(); // 适配 Service 参数类型
+        Integer userId = ctx.getUserId().intValue();
         userService.updateProfile(userId, dto);
         return Result.success(null);
     }
 
-    // ==================== 新增：个人信息更新（村民/管理员） ====================
+    // ==================== 个人信息更新（村民/管理员） ====================
 
     /**
      * 村民更新自己的个人信息（手机号、真实姓名、身份证号）
@@ -114,7 +126,6 @@ public class UserController {
             return Result.error(401, "请先登录");
         }
         Integer userId = ctx.getUserId().intValue();
-        // 调用 Service 方法，只允许更新手机号、姓名、身份证
         userService.updateUserInfo(userId, dto.getPhone(), dto.getRealName(), dto.getIdCard());
         return Result.success(null);
     }
@@ -126,9 +137,7 @@ public class UserController {
     @PutMapping("/admin/update/{userId}")
     public Result<Void> adminUpdateUser(@PathVariable Integer userId,
                                         @Valid @RequestBody UpdateProfileDto dto) {
-        // 校验管理员权限
         SecurityUtils.checkRole("VILLAGE_ADMIN");
-        // 管理员调用专用方法，同样包含基本校验
         userService.adminUpdateUserInfo(userId, dto.getPhone(), dto.getRealName(), dto.getIdCard());
         return Result.success(null);
     }

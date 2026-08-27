@@ -3,7 +3,6 @@ package com.scau.village.module.appeal.dto;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
 /**
@@ -20,10 +19,11 @@ public class SubmitAppealDto implements Serializable {
 
     /**
      * 被申诉的积分申请/评分记录ID（points_apply.id）
+     * 前端传递雪花ID字符串，防止JS精度丢失
      * 必填
      */
-    @NotNull(message = "积分记录ID不能为空")
-    private Long applyId;
+    @NotBlank(message = "积分记录ID不能为空")
+    private String applyId;
 
     /**
      * 申诉理由（必填）
@@ -42,8 +42,9 @@ public class SubmitAppealDto implements Serializable {
 
     /**
      * 关联检查批次ID（必填）
+     * 前端传递雪花ID字符串，防止JS精度丢失
      * 便于管理员快速定位到对应的检查批次
      */
-    @NotNull(message = "批次ID不能为空")
-    private Long batchId;
+    @NotBlank(message = "批次ID不能为空")
+    private String batchId;
 }

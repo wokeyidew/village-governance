@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.scau.village.module.points.mapper.QuarterlySnapshotMapper">
+
+    <resultMap id="BaseResultMap" type="com.scau.village.module.points.entity.QuarterlySnapshot">
+        <id column="id" property="id"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="quarter" property="quarter"/>
+        <result column="user_id" property="userId"/>
+        <result column="quarter_earned_points" property="quarterEarnedPoints"/>
+        <result column="quarter_net_points" property="quarterNetPoints"/>
+        <result column="previous_quarter_points" property="previousQuarterPoints"/>
+        <result column="progress_points" property="progressPoints"/>
+        <result column="rank_points" property="rankPoints"/>
+        <result column="rank_progress" property="rankProgress"/>
+        <result column="tag" property="tag"/>
+        <result column="rule_count" property="ruleCount"/>
+        <result column="activity_count" property="activityCount"/>
+        <result column="no_penalty_days" property="noPenaltyDays"/>
+        <result column="last_activity_time" property="lastActivityTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, tenant_id, quarter, user_id, quarter_earned_points, quarter_net_points,
+        previous_quarter_points, progress_points, rank_points, rank_progress,
+        tag, rule_count, activity_count, no_penalty_days, last_activity_time,
+        create_time, update_time
+    </sql>
+
+    <select id="selectRedList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND tag = 'red'
+        ORDER BY rank_points ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectProgressList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND tag = 'progress'
+        ORDER BY rank_progress ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectWarningList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND tag = 'warning'
+        ORDER BY quarter_net_points ASC
+    </select>
+
+    <select id="selectUserQuarterData" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND user_id = #{userId}
+    </select>
+
+    <select id="selectAllByQuarter" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        ORDER BY quarter_earned_points DESC, rule_count DESC,
+        activity_count DESC, no_penalty_days DESC, last_activity_time ASC
+    </select>
+
+    <select id="selectAllByProgress" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND progress_points &gt; 0
+        ORDER BY progress_points DESC
+    </select>
+
+    <update id="updateTag">
+        UPDATE quarterly_snapshot
+        SET tag = #{tag}
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND user_id = #{userId}
+    </update>
+
+    <select id="countRedList" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND tag = 'red'
+    </select>
+
+    <select id="countProgressList" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND tag = 'progress'
+    </select>
+
+    <select id="countWarningList" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM quarterly_snapshot
+        WHERE tenant_id = #{tenantId}
+        AND quarter = #{quarter}
+        AND tag = 'warning'
+    </select>
+
+</mapper>

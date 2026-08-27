@@ -3,6 +3,7 @@ package com.scau.village.module.points.dto;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
@@ -20,9 +21,10 @@ public class ScoreSubmitDto {
 
     /**
      * 检查批次ID（必填，关联inspection_batch表）
+     * 改为 String 类型，解决前端传递 19 位雪花 ID 时精度丢失的问题
      */
-    @NotNull(message = "检查批次ID不能为空")
-    private Long batchId;
+    @NotBlank(message = "检查批次ID不能为空")
+    private String batchId;
 
     /**
      * 户主用户ID（必填，被评分的用户）

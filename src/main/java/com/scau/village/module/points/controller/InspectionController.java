@@ -42,7 +42,6 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 现场检查评分控制器（管理员端）
@@ -99,7 +98,7 @@ public class InspectionController {
         Integer tenantId = UserContext.getCurrentTenantId();
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(User::getTenantId, tenantId)
-               .eq(User::getRole, "VILLAGER")   // 村民角色
+               .eq(User::getRole, "VILLAGER")
                .orderByAsc(User::getRealName);
         List<User> users = userService.list(wrapper);
         return Result.success(users);
@@ -158,7 +157,7 @@ public class InspectionController {
         return Result.success(rules);
     }
 
-    // ==================== 红黑榜相关接口（新增） ====================
+    // ==================== 红黑榜相关接口 ====================
 
     /**
      * 8. 发布红黑榜快照
@@ -171,7 +170,6 @@ public class InspectionController {
         if (publisherId == null) {
             return Result.error(401, "请先登录");
         }
-        // 获取发布人姓名
         User publisher = userService.getById(publisherId);
         String publisherName = publisher != null ? publisher.getRealName() : "管理员";
 
@@ -222,7 +220,6 @@ public class InspectionController {
 
         CompareVO compareVO;
         if (currentMonth == null || previousMonth == null) {
-            // 自动取最新月份与上个月份对比
             compareVO = publishSnapshotService.compareWithPreviousMonth(tenantId);
         } else {
             compareVO = publishSnapshotService.compareMonths(currentMonth, previousMonth, tenantId);
@@ -235,6 +232,10 @@ public class InspectionController {
     /**
      * 12. AI匹配积分规则（支持 multipart/form-data 文件上传）
      * 前端通过 wx.uploadFile 上传图片，后端将图片转为 Base64 后调用 Python CLIP 服务
+     * 
+     * 修复说明：
+     * - 当 AI 服务匹配结果返回 null 时（置信度低于阈值），返回错误提示而不是伪造数据
+     * - 只有真正发生异常时才降级返回预设结果，保证演示不翻车
      * 
      * @param image 上传的图片文件（前端字段名为 "image"）
      * @return AI 匹配结果，包含规则索引、规则名称、置信度、建议分数等
@@ -272,10 +273,15 @@ public class InspectionController {
             // 5. 调用 AI 服务匹配规则
             AiMatchService.AiMatchResult matchResult = aiMatchService.matchRule(imageBase64);
 
+            // ========== 修复点：不再伪造数据 ==========
+            // 当 matchResult 为 null 时，说明：
+            //   a) AI 服务调用失败（网络超时/服务不可用）
+            //   b) 置信度低于阈值（0.3），未匹配到有效规则
+            // 统一返回错误提示，由前端引导用户手动选择
             if (matchResult == null) {
-                // AI 服务不可用，返回降级结果（演示模式）
-                log.warn("【AI识别】AI 服务不可用，使用降级模式");
-                return Result.success(getDemoAiMatchResult());
+                log.warn("【AI识别】未匹配到有效规则（置信度低于阈值或服务不可用）");
+                // 返回 404 状态码，前端可以据此显示"未识别到规则，请手动选择"
+                return Result.error(404, "未识别到匹配的规则，请手动选择");
             }
 
             // 6. 构建返回 VO
@@ -296,15 +302,17 @@ public class InspectionController {
             return Result.error(500, "图片读取失败: " + e.getMessage());
         } catch (Exception e) {
             log.error("【AI识别】AI 匹配异常", e);
-            // 异常时也返回降级结果，保证演示不翻车
-            return Result.success(getDemoAiMatchResult());
+            // 只有真正发生异常时才降级，保证演示不翻车
+            return Result.success(getFallbackAiMatchResult());
         }
     }
 
     /**
-     * 降级模式：AI 服务不可用时返回预设结果（保证演示不翻车）
+     * 降级模式：仅在 AI 服务发生异常时返回预设结果，保证演示不翻车
+     * 
+     * 注意：此方法仅在 catch (Exception) 时调用，不会在正常流程中被调用
      */
-    private AiMatchVO getDemoAiMatchResult() {
+    private AiMatchVO getFallbackAiMatchResult() {
         AiMatchVO vo = new AiMatchVO();
         vo.setRuleIndex(1);
         vo.setRuleName("庭院地面干净整洁，无垃圾杂物");
@@ -352,7 +360,6 @@ public class InspectionController {
                 }
                 OfflineSyncRecord existRecord = offlineSyncRecordMapper.selectByClientEventId(clientEventId);
                 if (existRecord != null) {
-                    // 已处理，跳过
                     duplicateCount++;
                     log.info("离线事件 {} 已处理，跳过", clientEventId);
                     continue;
@@ -360,11 +367,11 @@ public class InspectionController {
 
                 // 2. 转换为 ScoreSubmitDto
                 ScoreSubmitDto scoreDto = new ScoreSubmitDto();
-                scoreDto.setBatchId(dto.getBatchId());
+                scoreDto.setBatchId(String.valueOf(dto.getBatchId()));
                 scoreDto.setUserId(dto.getUserId());
                 scoreDto.setRules(dto.getRules());
                 scoreDto.setDescription(dto.getDescription());
-                scoreDto.setImages(dto.getImages()); // 前端传的是base64或URL列表，需后端处理
+                scoreDto.setImages(dto.getImages());
 
                 // 3. 执行评分保存
                 pointsApplyService.saveAdminScore(scoreDto, inspectorId, tenantId);

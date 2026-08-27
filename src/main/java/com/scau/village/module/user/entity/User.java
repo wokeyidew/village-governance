@@ -9,6 +9,11 @@ import java.time.LocalDateTime;
  * 用户实体类
  * 对应数据库表：user
  *
+ * 积分体系说明（v2.0）：
+ * - total_earned_points（总获得积分）：历史累计获得的积分总和，只增不减，兑换时不扣减
+ * - available_points（可用积分）：当前可使用的积分余额，获得时增加，兑换时扣减
+ * - points（当前积分余额）：保留用于兼容，实际应使用 available_points
+ *
  * @author system
  * @since 2026-07-17
  */
@@ -63,7 +68,7 @@ public class User {
     private String role;
 
     /**
-     * 当前积分余额
+     * 当前积分余额（保留兼容，建议使用 available_points）
      */
     private Integer points;
 
@@ -93,4 +98,23 @@ public class User {
      */
     @TableLogic
     private Integer deleted;
+
+    // ==================== v2.0 新增字段 ====================
+
+    /**
+     * 总获得积分（永久累加，只增不减）
+     * 用于：荣誉总榜排名、年度评优、历史荣誉展示
+     * 兑换商品时不扣减此字段
+     */
+    @TableField("total_earned_points")
+    private Integer totalEarnedPoints;
+
+    /**
+     * 当前可用积分（兑换时扣减）
+     * 用于：积分兑换商品、参与活动消耗
+     * 计算公式：available_points = total_earned_points - 兑换消耗 - 扣分 + 整改恢复
+     */
+    @TableField("available_points")
+    private Integer availablePoints;
+
 }

@@ -3,7 +3,6 @@ package com.scau.village.module.rectification.dto;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
 /**
@@ -20,9 +19,10 @@ public class SubmitRectificationDto implements Serializable {
 
     /**
      * 整改任务ID（必填）
+     * 前端传递雪花ID字符串，防止JS精度丢失
      */
-    @NotNull(message = "整改任务ID不能为空")
-    private Long taskId;
+    @NotBlank(message = "整改任务ID不能为空")
+    private String taskId;
 
     /**
      * 整改后照片（必填）

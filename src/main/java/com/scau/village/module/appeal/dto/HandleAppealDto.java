@@ -2,7 +2,7 @@ package com.scau.village.module.appeal.dto;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotNull;
+import javax.validation.constraints.NotBlank;
 import java.io.Serializable;
 
 /**
@@ -19,15 +19,16 @@ public class HandleAppealDto implements Serializable {
 
     /**
      * 申诉记录ID（必填）
+     * 前端传递雪花ID字符串，防止JS精度丢失
      */
-    @NotNull(message = "申诉ID不能为空")
-    private Long appealId;
+    @NotBlank(message = "申诉ID不能为空")
+    private String appealId;
 
     /**
      * 复核决定（必填）
      * upheld-维持原判，modified-修改评分，revoked-撤销评分
      */
-    @NotNull(message = "复核决定不能为空")
+    @NotBlank(message = "复核决定不能为空")
     private String decision;
 
     /**
@@ -39,6 +40,7 @@ public class HandleAppealDto implements Serializable {
     /**
      * 修改后的分值（仅当 decision = modified 时有效）
      * 例如：将原扣10分改为扣5分，则传入 5（正数表示扣分分值）
+     * 注意：这是一个普通整数值，不是雪花ID，保持 Integer 类型
      */
     private Integer newPoints;
 }

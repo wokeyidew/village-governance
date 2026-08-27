@@ -123,52 +123,70 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         updateById(apply);
     }
 
-    // ==================== 新增管理员评分方法 ====================
+    // ==================== 管理员评分方法（核心修复） ====================
     @Override
     @Transactional
     public void saveAdminScore(ScoreSubmitDto dto, Integer inspectorId, Integer tenantId) {
+        log.info("【评分提交】开始处理，batchId={}, userId={}, rules={}, images={}",
+                dto.getBatchId(), dto.getUserId(), dto.getRules(), dto.getImages());
+
+        // ========== 修复点1：将 String 类型的 batchId 转换为 Long ==========
+        Long batchId;
+        try {
+            batchId = Long.parseLong(dto.getBatchId());
+        } catch (NumberFormatException e) {
+            log.error("【评分提交】batchId 格式错误: {}", dto.getBatchId(), e);
+            throw new BusinessException("批次ID格式错误");
+        }
+
         // 1. 校验批次存在
-        InspectionBatch batch = inspectionBatchService.getById(dto.getBatchId());
+        InspectionBatch batch = inspectionBatchService.getById(batchId);
         if (batch == null) {
+            log.warn("【评分提交】批次不存在，batchId={}", batchId);
             throw new BusinessException("检查批次不存在");
         }
+        log.info("【评分提交】批次校验通过，batchName={}", batch.getBatchName());
 
         // 2. 校验用户存在
         User user = userMapper.selectById(dto.getUserId());
         if (user == null) {
+            log.warn("【评分提交】用户不存在，userId={}", dto.getUserId());
             throw new BusinessException("用户不存在");
         }
+        log.info("【评分提交】用户校验通过，userName={}", user.getRealName());
 
-        // 3. 校验规则列表有效性，并计算总得分
+        // 3. 校验规则列表有效性
         List<Integer> ruleIds = dto.getRules();
         if (ruleIds == null || ruleIds.isEmpty()) {
             throw new BusinessException("至少选择一条评分规则");
         }
         List<PointsRule> rules = ruleMapper.selectBatchIds(ruleIds);
         if (rules.size() != ruleIds.size()) {
+            log.warn("【评分提交】部分规则不存在，请求规则数={}, 实际查询到={}", ruleIds.size(), rules.size());
             throw new BusinessException("部分规则不存在或已被删除");
         }
 
+        // 检查是否包含扣分规则
         boolean hasPenaltyRule = rules.stream().anyMatch(rule -> rule.getPoints() < 0);
 
+        // 扣分项必须上传照片
         if (hasPenaltyRule) {
             List<String> images = dto.getImages();
             if (images == null || images.isEmpty()) {
+                log.warn("【评分提交】扣分项缺少照片证据，rules={}", ruleIds);
                 throw new BusinessException("扣分项必须上传现场照片证据");
             }
+            log.info("【评分提交】扣分项照片数量：{}", images.size());
         }
 
+        // 计算总得分
         int totalScore = 0;
         List<ScoreDetail> detailList = new ArrayList<>();
-        List<PointsRule> penaltyRules = new ArrayList<>();
         for (PointsRule rule : rules) {
             if (rule.getStatus() != 1) {
                 throw new BusinessException("规则[" + rule.getRuleName() + "]已禁用，不能使用");
             }
             totalScore += rule.getPoints();
-            if (rule.getPoints() < 0) {
-                penaltyRules.add(rule);
-            }
             ScoreDetail detail = new ScoreDetail();
             detail.setRuleId(rule.getId());
             detail.setRuleName(rule.getRuleName());
@@ -176,22 +194,19 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             detailList.add(detail);
         }
 
-        List<String> watermarkedImageUrls = null;
-        if (hasPenaltyRule && dto.getImages() != null && !dto.getImages().isEmpty()) {
-            watermarkedImageUrls = dto.getImages();
-            log.info("扣分规则照片数量：{}", watermarkedImageUrls.size());
-        }
-
         LocalDate inspectionDate = batch.getInspectionDate();
 
+        // ========== 修复点2：遍历规则，逐条写入 points_apply 和 points_flow ==========
         for (PointsRule rule : rules) {
+            // ----- 1. 写入 points_apply（修复：之前缺失！）-----
             PointsApply apply = new PointsApply();
             apply.setTenantId(tenantId);
             apply.setUserId(dto.getUserId());
             apply.setRuleId(rule.getId());
             apply.setDescription(dto.getDescription() != null ? dto.getDescription() : rule.getRuleName() + "（现场评分）");
-            if (hasPenaltyRule && watermarkedImageUrls != null && !watermarkedImageUrls.isEmpty()) {
-                apply.setImages(String.join(",", watermarkedImageUrls));
+            // 图片处理
+            if (hasPenaltyRule && dto.getImages() != null && !dto.getImages().isEmpty()) {
+                apply.setImages(String.join(",", dto.getImages()));
             } else {
                 apply.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
             }
@@ -199,39 +214,47 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             apply.setAuditorId(inspectorId);
             apply.setAuditRemark("管理员现场评分");
             apply.setAuditTime(LocalDateTime.now());
-            apply.setSourceType("admin");
+            // ========== 修复点3：source_type 从 "admin" 改为 "admin_inspection" ==========
+            apply.setSourceType("admin_inspection");
             apply.setInspectorId(inspectorId);
-            apply.setInspectionBatchId(dto.getBatchId());
+            apply.setInspectionBatchId(batchId);  // 使用转换后的 Long
             apply.setInspectionDate(inspectionDate);
             apply.setHasEvidence(hasPenaltyRule ? 1 : 0);
             apply.setCreateTime(LocalDateTime.now());
-            save(apply);
 
+            save(apply);
+            log.info("【评分提交】✅ 写入 points_apply 成功，applyId={}, ruleId={}, sourceType={}",
+                    apply.getId(), rule.getId(), apply.getSourceType());
+
+            // ----- 2. 写入 points_flow -----
             PointsFlow flow = new PointsFlow();
             flow.setUserId(user.getId());
             flow.setChangeAmount(rule.getPoints());
             flow.setSourceType("admin_inspection");
+            // ========== 修复点4：source_id 指向 points_apply.id ==========
             flow.setSourceId(apply.getId());
             flow.setRemark("管理员现场评分：" + rule.getRuleName() + "，批次：" + batch.getBatchName());
             flow.setCreateTime(LocalDateTime.now());
             flowMapper.insert(flow);
+            log.info("【评分提交】✅ 写入 points_flow 成功，flowId={}, sourceId={}, changeAmount={}",
+                    flow.getId(), flow.getSourceId(), flow.getChangeAmount());
 
-            // 如果是扣分规则，保存证据和整改任务
+            // ----- 3. 如果是扣分规则，保存证据并创建整改任务 -----
             if (rule.getPoints() < 0) {
-                // ========== 保存证据（增加详细日志和异常捕获） ==========
-                if (watermarkedImageUrls != null && !watermarkedImageUrls.isEmpty()) {
-                    String photoUrls = String.join(",", watermarkedImageUrls);
-                    log.info("【证据保存】开始保存证据，applyId={}, 照片数量={}, 照片URL={}",
-                            apply.getId(), watermarkedImageUrls.size(), photoUrls);
+                // 保存证据
+                if (dto.getImages() != null && !dto.getImages().isEmpty()) {
+                    String photoUrls = String.join(",", dto.getImages());
+                    log.info("【证据保存】开始保存证据，applyId={}, 照片数量={}",
+                            apply.getId(), dto.getImages().size());
 
                     try {
                         ScoreEvidence evidence = new ScoreEvidence();
                         evidence.setApplyId(apply.getId().longValue());
                         evidence.setPhotoUrls(photoUrls);
-                        evidence.setPhotoCount(watermarkedImageUrls.size());
+                        evidence.setPhotoCount(dto.getImages().size());
                         evidence.setLocation("");
                         evidence.setInspectorId(inspectorId.longValue());
-                        evidence.setBatchId(dto.getBatchId());
+                        evidence.setBatchId(batchId);
                         evidence.setRuleVersion("1.0");
                         evidence.setRuleName(rule.getRuleName());
                         evidence.setUserName(user.getRealName());
@@ -244,54 +267,60 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
                                 apply.getId(), evidence.getId());
 
                     } catch (Exception e) {
-                        // 捕获异常，不影响主流程（只记录日志）
                         log.error("【证据保存】❌ 保存证据失败，applyId={}, error={}",
                                 apply.getId(), e.getMessage(), e);
                     }
                 } else {
-                    // 扣分项但没有照片，记录警告日志
-                    log.warn("【证据保存】⚠️ 扣分项但没有照片，applyId={}, rule={}, 请检查前端是否上传图片",
+                    log.warn("【证据保存】⚠️ 扣分项但没有照片，applyId={}, rule={}",
                             apply.getId(), rule.getRuleName());
                 }
 
-                // ========== 自动创建整改任务 ==========
+                // 创建整改任务
                 try {
                     rectificationTaskService.createTask(
                             apply.getId().longValue(),
                             dto.getUserId().longValue(),
-                            dto.getBatchId(),
+                            batchId,
                             rule.getRuleName(),
                             "请按照要求进行整改，整改完成后拍照上传。",
                             LocalDateTime.now().plusDays(7),
-                            watermarkedImageUrls != null ? String.join(",", watermarkedImageUrls) : null,
+                            dto.getImages() != null ? String.join(",", dto.getImages()) : null,
                             inspectorId.longValue()
                     );
-                    log.info("自动创建整改任务成功，applyId={}", apply.getId());
+                    log.info("【整改任务】✅ 创建整改任务成功，applyId={}, taskId={}",
+                            apply.getId(), apply.getId());
                 } catch (Exception e) {
-                    log.error("创建整改任务失败，applyId={}, error={}", apply.getId(), e.getMessage(), e);
+                    log.error("【整改任务】❌ 创建整改任务失败，applyId={}, error={}",
+                            apply.getId(), e.getMessage(), e);
                 }
             }
         }
 
-        // 7. 更新用户总积分（累加所有规则得分）
+        // 7. 更新用户总积分
         user.setPoints(user.getPoints() + totalScore);
         userMapper.updateById(user);
+        log.info("【评分提交】用户积分更新，userId={}, 新增积分={}, 当前总积分={}",
+                user.getId(), totalScore, user.getPoints());
 
         // 8. 更新/插入户汇总表
         String detailJson = JSON.toJSONString(detailList);
         inspectionHouseholdService.saveOrUpdateSummary(
-                dto.getBatchId(),
+                batchId,
                 dto.getUserId(),
                 totalScore,
                 detailJson,
                 inspectorId,
                 dto.getDescription()
         );
+        log.info("【评分提交】户汇总表更新完成，userId={}, totalScore={}", dto.getUserId(), totalScore);
 
         // 9. 记录操作日志
         operationLogService.log(inspectorId.longValue(), "INSPECTION_SCORE",
                 String.format("批次[%s]为用户[%s](ID:%s)评分，总得分:%d，规则数:%d",
                         batch.getBatchName(), user.getPhone(), user.getId(), totalScore, rules.size()));
+
+        log.info("【评分提交】✅ 全部处理完成，userId={}, 规则数={}, 总得分={}",
+                dto.getUserId(), rules.size(), totalScore);
     }
 
     // 内部类用于构建明细JSON

@@ -15,7 +15,9 @@ import java.util.Map;
 /**
  * AI匹配服务
  * 调用Python CLIP服务，根据图片匹配最合适的积分规则
- *
+ * 
+ * 当匹配结果置信度低于阈值时，视为未匹配到有效规则，返回 null
+ * 
  * @author system
  * @since 2026-08-19
  */
@@ -29,6 +31,11 @@ public class AiMatchService {
     @Value("${ai.clip.timeout:5000}")
     private int timeout;
 
+    /**
+     * 置信度阈值，低于此值视为未匹配到有效规则
+     */
+    private static final double CONFIDENCE_THRESHOLD = 0.3;
+
     private final RestTemplate restTemplate;
 
     public AiMatchService() {
@@ -37,14 +44,14 @@ public class AiMatchService {
         factory.setConnectTimeout(timeout);
         factory.setReadTimeout(timeout);
         this.restTemplate = new RestTemplate(factory);
-        log.info("【AI服务】初始化完成，超时时间: {}ms", timeout);
+        log.info("【AI服务】初始化完成，超时时间: {}ms, 置信度阈值: {}", timeout, CONFIDENCE_THRESHOLD);
     }
 
     /**
      * 调用AI服务匹配规则
      *
      * @param imageBase64 base64编码的图片（可含 data:image 前缀）
-     * @return 匹配结果，包含规则ID和置信度，如果失败则返回null
+     * @return 匹配结果，包含规则ID和置信度，如果失败或置信度过低则返回null
      */
     public AiMatchResult matchRule(String imageBase64) {
         if (imageBase64 == null || imageBase64.isEmpty()) {
@@ -91,13 +98,29 @@ public class AiMatchService {
                         if (data != null) {
                             AiMatchResult result = new AiMatchResult();
                             result.setRuleIndex(data.getInteger("rule_index"));
-                            result.setRuleName(data.getString("matched_rule"));
+                            result.setRuleName(data.getString("rule_text"));
                             result.setConfidence(data.getDouble("confidence"));
                             result.setSuggestedAction(data.getString("suggested_action"));
                             result.setSuggestedPoints(data.getInteger("suggested_points"));
-                            log.info("【AI服务】匹配成功: ruleIndex={}, confidence={}", 
-                                    result.getRuleIndex(), result.getConfidence());
+
+                            log.info("【AI服务】匹配结果: ruleIndex={}, confidence={}, ruleName={}",
+                                    result.getRuleIndex(), result.getConfidence(), result.getRuleName());
+
+                            // ====== 增加置信度阈值判断 ======
+                            // 置信度低于阈值 或 规则名称为空，视为未匹配到有效规则
+                            if (result.getConfidence() == null || result.getConfidence() < CONFIDENCE_THRESHOLD) {
+                                log.warn("【AI服务】置信度过低: {}, 视为未匹配到规则", result.getConfidence());
+                                return null;
+                            }
+
+                            if (result.getRuleName() == null || result.getRuleName().trim().isEmpty()) {
+                                log.warn("【AI服务】规则名称为空，视为未匹配到规则");
+                                return null;
+                            }
+
                             return result;
+                        } else {
+                            log.warn("【AI服务】响应中 data 为空");
                         }
                     } else {
                         log.error("【AI服务】返回错误: {}", body);

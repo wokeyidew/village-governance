@@ -80,4 +80,14 @@ public class PointsFlowVO {
      * 当来源为管理员现场评分或申报关联检查批次时存在，否则为 null
      */
     private String batchName;
+
+    // ==================== 新增字段（2026-08-27） ====================
+
+    /**
+     * 关联的积分申请/评分记录ID（points_apply.id）
+     * 用于前端跳转申诉时传递 applyId，关联整改和申诉流程
+     * 仅当 sourceType = 'admin_inspection' 或 'apply' 时存在，否则为 null
+     * 字符串格式，避免前端 JavaScript 处理 19 位雪花 ID 时精度丢失
+     */
+    private String applyId;
 }
