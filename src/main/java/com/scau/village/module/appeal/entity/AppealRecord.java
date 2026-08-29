@@ -1,8 +1,6 @@
 package com.scau.village.module.appeal.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -11,6 +9,12 @@ import java.time.LocalDateTime;
  * 申诉记录实体类
  * 对应表名：appeal_record
  * 用于记录村民对扣分项提出的申诉，以及管理员的处理过程
+ *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 字段类型从 Long 改为 String，避免前端 JavaScript 精度丢失
+ * - 移除 @JsonSerialize(using = ToStringSerializer.class)，因为 String 类型不需要序列化处理
+ * - 字段包括：id, applyId, userId, reviewerId, batchId
+ * - userId 虽然对应自增用户 ID，但为了与数据库 varchar(64) 保持一致，统一使用 String
  *
  * @author system
  * @since 2026-08-19
@@ -21,25 +25,22 @@ public class AppealRecord {
 
     /**
      * 主键ID（雪花算法）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失（Long 超出 JS Number 安全范围）
+     * 数据库类型：VARCHAR(64)
      */
     @TableId(type = IdType.ASSIGN_ID)
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long id;
+    private String id;
 
     /**
      * 关联积分申请/评分记录ID（points_apply.id）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long applyId;
+    private String applyId;
 
     /**
      * 申诉人用户ID
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 数据库类型：VARCHAR(64)（存储雪花ID，虽然用户ID是自增，但为保持统一）
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long userId;
+    private String userId;
 
     /**
      * 申诉人姓名（冗余存储，便于快速展示）
@@ -75,10 +76,9 @@ public class AppealRecord {
 
     /**
      * 复核人ID（管理员）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long reviewerId;
+    private String reviewerId;
 
     /**
      * 复核人姓名（冗余存储）
@@ -92,10 +92,9 @@ public class AppealRecord {
 
     /**
      * 关联检查批次ID（便于快速查询）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long batchId;
+    private String batchId;
 
     /**
      * 租户ID

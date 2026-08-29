@@ -3,8 +3,8 @@ package com.scau.village.module.rectification.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.scau.village.common.context.UserContext;
 import com.scau.village.common.exception.BusinessException;
-import com.scau.village.common.utils.SecurityUtils;
 import com.scau.village.module.points.entity.PointsApply;
 import com.scau.village.module.points.entity.PointsFlow;
 import com.scau.village.module.points.entity.PointsRule;
@@ -32,6 +32,16 @@ import java.util.List;
 /**
  * 整改任务服务实现类
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 参数类型从 Long 改为 String，解决前端 JavaScript 处理 19 位雪花 ID 时精度丢失的问题
+ * - createTask: applyId, batchId, inspectorId 改为 String
+ * - getTaskByIdWithTenant: taskId 改为 String
+ * - getTaskDetail, submitRectification, getAdminTaskDetail, reviewTask: taskId 改为 String
+ * - getTasksByBatchId, countByBatchId, calculateCompletionRate: batchId 改为 String
+ * - updateStatusByApplyId: applyId 改为 String
+ * - reviewTask 中 points_flow.source_id 使用 task.getApplyId()（已是 String）
+ * - 修复 reviewTask 中 pointsApplyMapper.selectById 参数类型，使用 Long.parseLong 转换
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -47,13 +57,53 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
     private final PointsRuleMapper pointsRuleMapper;
     private final PointsFlowMapper pointsFlowMapper;
 
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * 获取当前租户 ID，若为空则抛出异常
+     */
+    private Integer getTenantId() {
+        Integer tenantId = UserContext.getCurrentTenantId();
+        if (tenantId == null) {
+            throw new BusinessException("租户信息缺失，请重新登录");
+        }
+        return tenantId;
+    }
+
+    /**
+     * 根据 ID 和租户条件查询整改任务
+     * 替代 getById，确保多租户数据隔离
+     * 
+     * 修复说明：参数类型从 Long 改为 String
+     */
+    private RectificationTask getTaskByIdWithTenant(String taskId) {
+        if (taskId == null || taskId.isEmpty()) {
+            throw new BusinessException("任务ID不能为空");
+        }
+        Integer tenantId = getTenantId();
+        LambdaQueryWrapper<RectificationTask> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(RectificationTask::getId, taskId)
+               .eq(RectificationTask::getTenantId, tenantId);
+        RectificationTask task = getOne(wrapper);
+        if (task == null) {
+            log.warn("整改任务不存在，taskId={}, tenantId={}", taskId, tenantId);
+            throw new BusinessException("整改任务不存在，taskId=" + taskId);
+        }
+        return task;
+    }
+
     // ==================== 创建方法 ====================
 
+    /**
+     * 创建整改任务
+     * 
+     * 修复说明：applyId, batchId, inspectorId 从 Long 改为 String
+     */
     @Override
     @Transactional
-    public RectificationTask createTask(Long applyId, Long userId, Long batchId, String ruleName,
+    public RectificationTask createTask(String applyId, Long userId, String batchId, String ruleName,
                                         String requirement, LocalDateTime deadline,
-                                        String beforePhotos, Long inspectorId) {
+                                        String beforePhotos, String inspectorId) {
         if (applyId == null || userId == null) {
             throw new BusinessException("创建整改任务失败：缺少必要参数");
         }
@@ -73,7 +123,7 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
 
         RectificationTask task = new RectificationTask();
         task.setApplyId(applyId);
-        task.setUserId(userId);
+        task.setUserId(userId.toString());
         task.setBatchId(batchId);
         task.setRuleName(ruleName);
         task.setRequirement(requirement);
@@ -99,7 +149,7 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
         }
         Page<RectificationTask> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<RectificationTask> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(RectificationTask::getUserId, userId)
+        wrapper.eq(RectificationTask::getUserId, userId.toString())
                 .eq(StringUtils.isNotBlank(status), RectificationTask::getStatus, status)
                 .orderByDesc(RectificationTask::getCreateTime);
 
@@ -115,12 +165,12 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
         if (userId == null) {
             throw new BusinessException("用户ID不能为空");
         }
+        String userIdStr = userId.toString();
         List<RectificationTaskVO> counts = new ArrayList<>();
-        // 各状态计数
-        counts.add(createCountVO(STATUS_PENDING, rectificationTaskMapper.countByUserIdAndStatus(userId, STATUS_PENDING)));
-        counts.add(createCountVO(STATUS_REVIEWING, rectificationTaskMapper.countByUserIdAndStatus(userId, STATUS_REVIEWING)));
-        counts.add(createCountVO(STATUS_RESOLVED, rectificationTaskMapper.countByUserIdAndStatus(userId, STATUS_RESOLVED)));
-        counts.add(createCountVO(STATUS_OVERDUE, rectificationTaskMapper.countByUserIdAndStatus(userId, STATUS_OVERDUE)));
+        counts.add(createCountVO(STATUS_PENDING, rectificationTaskMapper.countByUserIdAndStatus(userIdStr, STATUS_PENDING)));
+        counts.add(createCountVO(STATUS_REVIEWING, rectificationTaskMapper.countByUserIdAndStatus(userIdStr, STATUS_REVIEWING)));
+        counts.add(createCountVO(STATUS_RESOLVED, rectificationTaskMapper.countByUserIdAndStatus(userIdStr, STATUS_RESOLVED)));
+        counts.add(createCountVO(STATUS_OVERDUE, rectificationTaskMapper.countByUserIdAndStatus(userIdStr, STATUS_OVERDUE)));
         return counts;
     }
 
@@ -131,22 +181,29 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
         return vo;
     }
 
+    /**
+     * 获取整改任务详情（村民端）
+     * 
+     * 修复说明：taskId 从 Long 改为 String
+     */
     @Override
-    public RectificationDetailVO getTaskDetail(Long taskId, Long userId) {
-        // 🔥 增加日志：记录入参
+    public RectificationDetailVO getTaskDetail(String taskId, Long userId) {
         log.info("【整改详情-村民端】开始查询，taskId={}, userId={}", taskId, userId);
 
         if (taskId == null || userId == null) {
-            log.warn("【整改详情-村民端】参数不完整，taskId={}, userId={}", taskId, userId);
+            log.warn("【整改详情-村民端】参数不完整");
             throw new BusinessException("参数不完整");
         }
 
-        // 直接使用 MyBatis-Plus 的 getById 查询（不会自动添加 tenant_id 过滤）
-        RectificationTask task = getById(taskId);
+        Integer tenantId = getTenantId();
 
-        // 🔥 增加日志：记录查询结果
+        LambdaQueryWrapper<RectificationTask> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(RectificationTask::getId, taskId)
+               .eq(RectificationTask::getTenantId, tenantId);
+        RectificationTask task = getOne(wrapper);
+
         if (task == null) {
-            log.warn("【整改详情-村民端】查询结果为空，taskId={}，数据库中不存在该记录", taskId);
+            log.warn("【整改详情-村民端】查询结果为空，taskId={}, tenantId={}", taskId, tenantId);
             throw new BusinessException("整改任务不存在，taskId=" + taskId);
         }
 
@@ -154,7 +211,7 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
                 task.getId(), task.getUserId(), task.getStatus(), task.getApplyId());
 
         // 权限校验：只能查看自己的任务
-        if (!task.getUserId().equals(userId)) {
+        if (!task.getUserId().equals(userId.toString())) {
             log.warn("【整改详情-村民端】权限校验失败，taskId={}, 任务所属用户={}, 当前用户={}",
                     taskId, task.getUserId(), userId);
             throw new BusinessException("无权查看此任务");
@@ -166,18 +223,23 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
 
     // ==================== 村民端操作方法 ====================
 
+    /**
+     * 村民提交整改
+     * 
+     * 修复说明：taskId 从 Long 改为 String
+     */
     @Override
     @Transactional
-    public RectificationTask submitRectification(Long taskId, Long userId, String afterPhotos, String submitRemark) {
+    public RectificationTask submitRectification(String taskId, Long userId, String afterPhotos, String submitRemark) {
         if (taskId == null || userId == null) {
             throw new BusinessException("参数不完整");
         }
-        RectificationTask task = getById(taskId);
-        if (task == null) {
-            throw new BusinessException("整改任务不存在");
-        }
+
+        // 使用带租户条件的方法，替代 getById
+        RectificationTask task = getTaskByIdWithTenant(taskId);
+
         // 权限校验
-        if (!task.getUserId().equals(userId)) {
+        if (!task.getUserId().equals(userId.toString())) {
             throw new BusinessException("无权操作此任务");
         }
         // 状态校验：只有待整改或待复核状态可以提交
@@ -219,22 +281,29 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
         return voPage;
     }
 
+    /**
+     * 管理员获取整改任务详情
+     * 
+     * 修复说明：taskId 从 Long 改为 String
+     */
     @Override
-    public RectificationDetailVO getAdminTaskDetail(Long taskId) {
-        // 🔥 增加日志：记录入参
+    public RectificationDetailVO getAdminTaskDetail(String taskId) {
         log.info("【整改详情-管理员端】开始查询，taskId={}", taskId);
 
-        if (taskId == null) {
+        if (taskId == null || taskId.isEmpty()) {
             log.warn("【整改详情-管理员端】taskId 为空");
             throw new BusinessException("任务ID不能为空");
         }
 
-        // 直接使用 MyBatis-Plus 的 getById 查询（不会自动添加 tenant_id 过滤）
-        RectificationTask task = getById(taskId);
+        Integer tenantId = getTenantId();
 
-        // 🔥 增加日志：记录查询结果
+        LambdaQueryWrapper<RectificationTask> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(RectificationTask::getId, taskId)
+               .eq(RectificationTask::getTenantId, tenantId);
+        RectificationTask task = getOne(wrapper);
+
         if (task == null) {
-            log.warn("【整改详情-管理员端】查询结果为空，taskId={}，数据库中不存在该记录", taskId);
+            log.warn("【整改详情-管理员端】查询结果为空，taskId={}, tenantId={}", taskId, tenantId);
             throw new BusinessException("整改任务不存在，taskId=" + taskId);
         }
 
@@ -244,9 +313,14 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
         return convertToDetailVO(task);
     }
 
+    /**
+     * 根据批次ID获取整改任务列表
+     * 
+     * 修复说明：batchId 从 Long 改为 String
+     */
     @Override
-    public List<RectificationTask> getTasksByBatchId(Long batchId, String status) {
-        if (batchId == null) {
+    public List<RectificationTask> getTasksByBatchId(String batchId, String status) {
+        if (batchId == null || batchId.isEmpty()) {
             throw new BusinessException("批次ID不能为空");
         }
         if (StringUtils.isNotBlank(status)) {
@@ -258,16 +332,24 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
 
     // ==================== 管理员端操作方法 ====================
 
+    /**
+     * 管理员复核整改任务
+     * 
+     * 修复说明：
+     * - taskId 从 Long 改为 String
+     * - points_flow.source_id 使用 task.getApplyId()（已是 String）
+     * - pointsApplyMapper.selectById 需要 Long 参数，使用 Long.parseLong 转换
+     */
     @Override
     @Transactional
-    public RectificationTask reviewTask(Long taskId, Long reviewerId, String reviewResult, String reviewRemark) {
+    public RectificationTask reviewTask(String taskId, Long reviewerId, String reviewResult, String reviewRemark) {
         if (taskId == null || reviewerId == null || StringUtils.isBlank(reviewResult)) {
             throw new BusinessException("参数不完整");
         }
-        RectificationTask task = getById(taskId);
-        if (task == null) {
-            throw new BusinessException("整改任务不存在");
-        }
+
+        // 使用带租户条件的方法，替代 getById
+        RectificationTask task = getTaskByIdWithTenant(taskId);
+
         // 状态校验：只有待复核状态可以复核
         if (!STATUS_REVIEWING.equals(task.getStatus())) {
             throw new BusinessException("当前状态不可复核，请确认任务已提交整改");
@@ -275,8 +357,8 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
 
         // 复核通过：恢复积分（扣分值的50%）
         if (REVIEW_PASSED.equals(reviewResult)) {
-            // 查询积分记录
-            PointsApply apply = pointsApplyMapper.selectById(task.getApplyId());
+            // 查询积分记录 - 转换 applyId 为 Long
+            PointsApply apply = pointsApplyMapper.selectById(Long.parseLong(task.getApplyId()));
             if (apply == null) {
                 throw new BusinessException("关联的积分记录不存在");
             }
@@ -288,12 +370,15 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
             int penaltyPoints = Math.abs(rule.getPoints());
             int rewardPoints = penaltyPoints / 2; // 恢复50%
             if (rewardPoints > 0) {
-                // 更新用户积分
-                User user = userMapper.selectById(task.getUserId());
+                // 更新用户积分（含总获得积分和可用积分双轨制）
+                Long userId = Long.parseLong(task.getUserId());
+                User user = userMapper.selectById(userId);
                 if (user == null) {
                     throw new BusinessException("用户不存在");
                 }
                 user.setPoints(user.getPoints() + rewardPoints);
+                user.setTotalEarnedPoints(user.getTotalEarnedPoints() + rewardPoints);
+                user.setAvailablePoints(user.getAvailablePoints() + rewardPoints);
                 userMapper.updateById(user);
 
                 // 记录积分流水
@@ -301,9 +386,11 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
                 flow.setUserId(user.getId());
                 flow.setChangeAmount(rewardPoints);
                 flow.setSourceType("rectification");
-                flow.setSourceId(task.getApplyId().intValue());
+                // sourceId 直接使用 task.getApplyId()（String）
+                flow.setSourceId(task.getApplyId());
                 flow.setRemark("整改奖励积分（扣分" + penaltyPoints + "分，恢复" + rewardPoints + "分）");
                 flow.setCreateTime(LocalDateTime.now());
+                flow.setTenantId(user.getTenantId());
                 pointsFlowMapper.insert(flow);
             }
 
@@ -318,7 +405,7 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
             throw new BusinessException("复核结果参数错误，请使用 'passed' 或 'rejected'");
         }
 
-        task.setReviewerId(reviewerId);
+        task.setReviewerId(reviewerId.toString());
         task.setReviewRemark(reviewRemark);
         task.setReviewTime(LocalDateTime.now());
         task.setUpdateTime(LocalDateTime.now());
@@ -333,20 +420,30 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
         if (userId == null || StringUtils.isBlank(status)) {
             return 0L;
         }
-        return rectificationTaskMapper.countByUserIdAndStatus(userId, status);
+        return rectificationTaskMapper.countByUserIdAndStatus(userId.toString(), status);
     }
 
+    /**
+     * 统计某个批次的整改任务总数
+     * 
+     * 修复说明：batchId 从 Long 改为 String
+     */
     @Override
-    public Long countByBatchId(Long batchId) {
-        if (batchId == null) {
+    public Long countByBatchId(String batchId) {
+        if (batchId == null || batchId.isEmpty()) {
             return 0L;
         }
         return rectificationTaskMapper.countByBatchId(batchId);
     }
 
+    /**
+     * 计算某个批次的整改完成率
+     * 
+     * 修复说明：batchId 从 Long 改为 String
+     */
     @Override
-    public Integer calculateCompletionRate(Long batchId) {
-        if (batchId == null) {
+    public Integer calculateCompletionRate(String batchId) {
+        if (batchId == null || batchId.isEmpty()) {
             return 0;
         }
         return rectificationTaskMapper.calculateCompletionRate(batchId);
@@ -357,9 +454,9 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
         if (userId == null) {
             return 0L;
         }
-        // 待整改 = pending + reviewing（待复核也视为未完成，因为村民已提交但管理员未处理）
-        long pending = rectificationTaskMapper.countByUserIdAndStatus(userId, STATUS_PENDING);
-        long reviewing = rectificationTaskMapper.countByUserIdAndStatus(userId, STATUS_REVIEWING);
+        String userIdStr = userId.toString();
+        long pending = rectificationTaskMapper.countByUserIdAndStatus(userIdStr, STATUS_PENDING);
+        long reviewing = rectificationTaskMapper.countByUserIdAndStatus(userIdStr, STATUS_REVIEWING);
         return pending + reviewing;
     }
 
@@ -375,9 +472,14 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
         return updated;
     }
 
+    /**
+     * 根据积分申请记录ID更新整改状态
+     * 
+     * 修复说明：applyId 从 Long 改为 String
+     */
     @Override
     @Transactional
-    public int updateStatusByApplyId(Long applyId, String status) {
+    public int updateStatusByApplyId(String applyId, String status) {
         if (applyId == null || StringUtils.isBlank(status)) {
             return 0;
         }
@@ -406,10 +508,11 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
     private RectificationTaskVO convertToVO(RectificationTask task) {
         RectificationTaskVO vo = new RectificationTaskVO();
         BeanUtils.copyProperties(task, vo);
-        // 补充用户姓名（可选）
-        User user = userMapper.selectById(task.getUserId());
-        if (user != null) {
-            vo.setUserName(user.getRealName());
+        if (task.getUserId() != null) {
+            User user = userMapper.selectById(Long.parseLong(task.getUserId()));
+            if (user != null) {
+                vo.setUserName(user.getRealName());
+            }
         }
         return vo;
     }
@@ -420,27 +523,25 @@ public class RectificationTaskServiceImpl extends ServiceImpl<RectificationTaskM
     private RectificationDetailVO convertToDetailVO(RectificationTask task) {
         RectificationDetailVO vo = new RectificationDetailVO();
         BeanUtils.copyProperties(task, vo);
-        // 补充用户信息
-        User user = userMapper.selectById(task.getUserId());
-        if (user != null) {
-            vo.setUserName(user.getRealName());
-            vo.setUserPhone(user.getPhone());
+        if (task.getUserId() != null) {
+            User user = userMapper.selectById(Long.parseLong(task.getUserId()));
+            if (user != null) {
+                vo.setUserName(user.getRealName());
+                vo.setUserPhone(user.getPhone());
+            }
         }
-        // 补充检查人信息
         if (task.getInspectorId() != null) {
-            User inspector = userMapper.selectById(task.getInspectorId());
+            User inspector = userMapper.selectById(Long.parseLong(task.getInspectorId()));
             if (inspector != null) {
                 vo.setInspectorName(inspector.getRealName());
             }
         }
-        // 补充复核人信息
         if (task.getReviewerId() != null) {
-            User reviewer = userMapper.selectById(task.getReviewerId());
+            User reviewer = userMapper.selectById(Long.parseLong(task.getReviewerId()));
             if (reviewer != null) {
                 vo.setReviewerName(reviewer.getRealName());
             }
         }
-        // 计算是否逾期
         vo.setOverdue(task.isOverdue());
         return vo;
     }

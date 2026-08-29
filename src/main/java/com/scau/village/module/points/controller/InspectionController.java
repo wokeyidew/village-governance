@@ -236,6 +236,7 @@ public class InspectionController {
      * 修复说明：
      * - 当 AI 服务匹配结果返回 null 时（置信度低于阈值），返回错误提示而不是伪造数据
      * - 只有真正发生异常时才降级返回预设结果，保证演示不翻车
+     * - 字段名统一为 ruleText，与 AiMatchVO 保持一致
      * 
      * @param image 上传的图片文件（前端字段名为 "image"）
      * @return AI 匹配结果，包含规则索引、规则名称、置信度、建议分数等
@@ -284,10 +285,10 @@ public class InspectionController {
                 return Result.error(404, "未识别到匹配的规则，请手动选择");
             }
 
-            // 6. 构建返回 VO
+            // 6. 构建返回 VO（使用 ruleText 字段）
             AiMatchVO vo = new AiMatchVO();
             vo.setRuleIndex(matchResult.getRuleIndex());
-            vo.setRuleName(matchResult.getRuleName());
+            vo.setRuleText(matchResult.getRuleName());  // 从 AiMatchResult 取 ruleName 赋给 ruleText
             vo.setConfidence(matchResult.getConfidence());
             vo.setSuggestedAction(matchResult.getSuggestedAction());
             vo.setSuggestedPoints(matchResult.getSuggestedPoints());
@@ -315,7 +316,7 @@ public class InspectionController {
     private AiMatchVO getFallbackAiMatchResult() {
         AiMatchVO vo = new AiMatchVO();
         vo.setRuleIndex(1);
-        vo.setRuleName("庭院地面干净整洁，无垃圾杂物");
+        vo.setRuleText("庭院地面干净整洁，无垃圾杂物");
         vo.setConfidence(0.94);
         vo.setSuggestedAction("加分");
         vo.setSuggestedPoints(10);

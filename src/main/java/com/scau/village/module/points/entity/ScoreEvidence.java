@@ -1,8 +1,6 @@
 package com.scau.village.module.points.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -13,6 +11,11 @@ import java.time.LocalDateTime;
  * 用于存储评分时绑定的证据（照片、时间、检查人等信息）
  * 仅扣分项强制绑定证据，加分项可选
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 字段类型从 Long 改为 String，避免前端 JavaScript 精度丢失
+ * - 移除 @JsonSerialize(using = ToStringSerializer.class)，因为 String 类型不需要序列化处理
+ * - 字段包括：applyId, inspectorId, batchId
+ *
  * @author system
  * @since 2026-08-18
  */
@@ -21,19 +24,16 @@ import java.time.LocalDateTime;
 public class ScoreEvidence {
 
     /**
-     * 主键ID
-     * 序列化为字符串，避免前端 JavaScript 精度丢失（Long 超出 JS Number 安全范围）
+     * 主键ID（自增）
      */
     @TableId(type = IdType.AUTO)
-    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
      * 关联积分申请/评分记录ID（points_apply.id）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 雪花ID字符串类型，避免前端精度丢失
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long applyId;
+    private String applyId;
 
     /**
      * 照片URL列表（多张用逗号分隔）
@@ -53,17 +53,15 @@ public class ScoreEvidence {
 
     /**
      * 检查人ID（管理员ID）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 雪花ID字符串类型，避免前端精度丢失
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long inspectorId;
+    private String inspectorId;
 
     /**
      * 关联检查批次ID（inspection_batch.id）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 雪花ID字符串类型，避免前端精度丢失
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long batchId;
+    private String batchId;
 
     /**
      * 评分时使用的规则版本号

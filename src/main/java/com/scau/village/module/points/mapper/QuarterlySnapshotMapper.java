@@ -14,6 +14,12 @@ import java.util.List;
  * 对应表：quarterly_snapshot
  * 提供红榜、蜕变榜、帮扶榜的查询功能
  *
+ * 纯注解方式（无 XML），避免 SAXParseException
+ *
+ * 修复说明（v2.0.9）：
+ * - 所有查询增加 LEFT JOIN user 表，返回 userName 字段
+ * - 使用表别名 qs，避免字段冲突
+ *
  * @author system
  * @since 2026-08-28
  */
@@ -29,11 +35,13 @@ public interface QuarterlySnapshotMapper extends BaseMapper<QuarterlySnapshot> {
      * @param limit    限制条数（默认取前20名）
      * @return 红榜列表
      */
-    @Select("SELECT * FROM quarterly_snapshot " +
-            "WHERE tenant_id = #{tenantId} " +
-            "AND quarter = #{quarter} " +
-            "AND tag = 'red' " +
-            "ORDER BY rank_points ASC " +
+    @Select("SELECT qs.*, u.real_name AS userName " +
+            "FROM quarterly_snapshot qs " +
+            "LEFT JOIN user u ON qs.user_id = u.id " +
+            "WHERE qs.tenant_id = #{tenantId} " +
+            "AND qs.quarter = #{quarter} " +
+            "AND qs.tag = 'red' " +
+            "ORDER BY qs.rank_points ASC " +
             "LIMIT #{limit}")
     List<QuarterlySnapshot> selectRedList(@Param("tenantId") Integer tenantId,
                                           @Param("quarter") String quarter,
@@ -48,11 +56,13 @@ public interface QuarterlySnapshotMapper extends BaseMapper<QuarterlySnapshot> {
      * @param limit    限制条数（默认取前20名）
      * @return 蜕变榜列表
      */
-    @Select("SELECT * FROM quarterly_snapshot " +
-            "WHERE tenant_id = #{tenantId} " +
-            "AND quarter = #{quarter} " +
-            "AND tag = 'progress' " +
-            "ORDER BY rank_progress ASC " +
+    @Select("SELECT qs.*, u.real_name AS userName " +
+            "FROM quarterly_snapshot qs " +
+            "LEFT JOIN user u ON qs.user_id = u.id " +
+            "WHERE qs.tenant_id = #{tenantId} " +
+            "AND qs.quarter = #{quarter} " +
+            "AND qs.tag = 'progress' " +
+            "ORDER BY qs.rank_progress ASC " +
             "LIMIT #{limit}")
     List<QuarterlySnapshot> selectProgressList(@Param("tenantId") Integer tenantId,
                                                @Param("quarter") String quarter,
@@ -67,11 +77,13 @@ public interface QuarterlySnapshotMapper extends BaseMapper<QuarterlySnapshot> {
      * @param quarter  季度标识，如：2026-Q3
      * @return 帮扶榜列表
      */
-    @Select("SELECT * FROM quarterly_snapshot " +
-            "WHERE tenant_id = #{tenantId} " +
-            "AND quarter = #{quarter} " +
-            "AND tag = 'warning' " +
-            "ORDER BY quarter_net_points ASC")
+    @Select("SELECT qs.*, u.real_name AS userName " +
+            "FROM quarterly_snapshot qs " +
+            "LEFT JOIN user u ON qs.user_id = u.id " +
+            "WHERE qs.tenant_id = #{tenantId} " +
+            "AND qs.quarter = #{quarter} " +
+            "AND qs.tag = 'warning' " +
+            "ORDER BY qs.quarter_net_points ASC")
     List<QuarterlySnapshot> selectWarningList(@Param("tenantId") Integer tenantId,
                                               @Param("quarter") String quarter);
 
@@ -83,10 +95,12 @@ public interface QuarterlySnapshotMapper extends BaseMapper<QuarterlySnapshot> {
      * @param userId   用户ID
      * @return 季度快照数据，不存在则返回 null
      */
-    @Select("SELECT * FROM quarterly_snapshot " +
-            "WHERE tenant_id = #{tenantId} " +
-            "AND quarter = #{quarter} " +
-            "AND user_id = #{userId}")
+    @Select("SELECT qs.*, u.real_name AS userName " +
+            "FROM quarterly_snapshot qs " +
+            "LEFT JOIN user u ON qs.user_id = u.id " +
+            "WHERE qs.tenant_id = #{tenantId} " +
+            "AND qs.quarter = #{quarter} " +
+            "AND qs.user_id = #{userId}")
     QuarterlySnapshot selectUserQuarterData(@Param("tenantId") Integer tenantId,
                                             @Param("quarter") String quarter,
                                             @Param("userId") Integer userId);
@@ -99,14 +113,16 @@ public interface QuarterlySnapshotMapper extends BaseMapper<QuarterlySnapshot> {
      * @param quarter  季度标识
      * @return 该季度所有用户快照列表
      */
-    @Select("SELECT * FROM quarterly_snapshot " +
-            "WHERE tenant_id = #{tenantId} " +
-            "AND quarter = #{quarter} " +
-            "ORDER BY quarter_earned_points DESC, " +
-            "rule_count DESC, " +
-            "activity_count DESC, " +
-            "no_penalty_days DESC, " +
-            "last_activity_time ASC")
+    @Select("SELECT qs.*, u.real_name AS userName " +
+            "FROM quarterly_snapshot qs " +
+            "LEFT JOIN user u ON qs.user_id = u.id " +
+            "WHERE qs.tenant_id = #{tenantId} " +
+            "AND qs.quarter = #{quarter} " +
+            "ORDER BY qs.quarter_earned_points DESC, " +
+            "qs.rule_count DESC, " +
+            "qs.activity_count DESC, " +
+            "qs.no_penalty_days DESC, " +
+            "qs.last_activity_time ASC")
     List<QuarterlySnapshot> selectAllByQuarter(@Param("tenantId") Integer tenantId,
                                                @Param("quarter") String quarter);
 
@@ -117,11 +133,15 @@ public interface QuarterlySnapshotMapper extends BaseMapper<QuarterlySnapshot> {
      * @param quarter  季度标识
      * @return 按进步分降序排列的快照列表
      */
-    @Select("SELECT * FROM quarterly_snapshot " +
-            "WHERE tenant_id = #{tenantId} " +
-            "AND quarter = #{quarter} " +
-            "AND progress_points > 0 " +
-            "ORDER BY progress_points DESC")
+    @Select("<script>" +
+            "SELECT qs.*, u.real_name AS userName " +
+            "FROM quarterly_snapshot qs " +
+            "LEFT JOIN user u ON qs.user_id = u.id " +
+            "WHERE qs.tenant_id = #{tenantId} " +
+            "AND qs.quarter = #{quarter} " +
+            "AND qs.progress_points &gt; 0 " +
+            "ORDER BY qs.progress_points DESC" +
+            "</script>")
     List<QuarterlySnapshot> selectAllByProgress(@Param("tenantId") Integer tenantId,
                                                 @Param("quarter") String quarter);
 

@@ -15,28 +15,61 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 import javax.validation.ConstraintViolationException;
 
+/**
+ * 全局异常处理器
+ * 
+ * 修复说明（2026-08-30）：
+ * - BusinessException 根据消息内容自动映射 HTTP 状态码
+ * - 包含“不存在”、“未找到”等关键词时返回 404
+ * - 包含“无权”、“权限”等关键词时返回 403
+ * - 其他业务异常默认返回 400（参数错误）或 500（服务器错误）
+ *
+ * @author system
+ * @since 2026-07-17
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
-     * 业务异常：根据 code 设置不同的 HTTP 状态码
+     * 业务异常：根据 code 和消息内容映射 HTTP 状态码
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Result<?>> handleBusinessException(BusinessException e) {
         log.error("业务异常: code={}, message={}", e.getCode(), e.getMessage());
-        Result<?> result = Result.error(e.getCode(), e.getMessage());
+        
         // 根据业务 code 映射 HTTP 状态码
         HttpStatus status;
-        if (e.getCode() == 401) {
+        int code = e.getCode();
+        
+        // 如果 code 已经明确设置，优先使用 code 映射
+        if (code == 401) {
             status = HttpStatus.UNAUTHORIZED;
-        } else if (e.getCode() == 403) {
+        } else if (code == 403) {
             status = HttpStatus.FORBIDDEN;
-        } else if (e.getCode() == 400) {
+        } else if (code == 400) {
             status = HttpStatus.BAD_REQUEST;
+        } else if (code == 404) {
+            status = HttpStatus.NOT_FOUND;
         } else {
-            status = HttpStatus.INTERNAL_SERVER_ERROR;
+            // code 未明确指定，根据消息内容智能判断
+            String msg = e.getMessage();
+            if (msg != null) {
+                if (msg.contains("不存在") || msg.contains("未找到") || msg.contains("已删除") || msg.contains("已失效")) {
+                    status = HttpStatus.NOT_FOUND;
+                } else if (msg.contains("无权") || msg.contains("权限") || msg.contains("禁止")) {
+                    status = HttpStatus.FORBIDDEN;
+                } else if (msg.contains("参数") || msg.contains("格式") || msg.contains("必须")) {
+                    status = HttpStatus.BAD_REQUEST;
+                } else {
+                    status = HttpStatus.INTERNAL_SERVER_ERROR;
+                }
+            } else {
+                status = HttpStatus.INTERNAL_SERVER_ERROR;
+            }
         }
+        
+        Result<?> result = Result.error(e.getCode(), e.getMessage());
         return new ResponseEntity<>(result, status);
     }
 

@@ -1,8 +1,6 @@
 package com.scau.village.module.rectification.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -11,6 +9,12 @@ import java.time.LocalDateTime;
  * 整改任务实体类
  * 对应表名：rectification_task
  * 用于记录扣分后自动生成的整改任务，跟踪整改全过程
+ *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 字段类型从 Long 改为 String，避免前端 JavaScript 精度丢失
+ * - 移除 @JsonSerialize(using = ToStringSerializer.class)，因为 String 类型不需要序列化处理
+ * - 字段包括：id, applyId, userId, batchId, inspectorId, reviewerId
+ * - userId 虽然对应自增用户 ID，但为了与数据库 varchar(64) 保持一致，统一使用 String
  *
  * @author system
  * @since 2026-08-19
@@ -21,29 +25,29 @@ public class RectificationTask {
 
     /**
      * 主键ID（雪花算法）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失（Long 超出 JS Number 安全范围）
+     * 数据库类型：VARCHAR(64)
      */
     @TableId(type = IdType.ASSIGN_ID)
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long id;
+    private String id;
 
     /**
      * 关联积分申请/评分记录ID（points_apply.id）
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long applyId;
+    private String applyId;
 
     /**
      * 责任户主用户ID（关联user表）
+     * 数据库类型：VARCHAR(64)，存储雪花ID（虽然用户ID是自增，但关联关系用雪花）
+     * 注意：实际存储的可能是自增ID转换为字符串，但为了统一，这里用String
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long userId;
+    private String userId;
 
     /**
      * 关联检查批次ID（inspection_batch.id）
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long batchId;
+    private String batchId;
 
     /**
      * 扣分规则名称（冗余存储，便于快速展示）
@@ -82,15 +86,20 @@ public class RectificationTask {
     private LocalDateTime submitTime;
 
     /**
+     * 村民整改说明（可选）
+     */
+    private String submitRemark;
+
+    /**
      * 复核结果：passed-通过，rejected-不通过
      */
     private String reviewResult;
 
     /**
      * 复核人ID（管理员）
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long reviewerId;
+    private String reviewerId;
 
     /**
      * 复核时间
@@ -98,26 +107,21 @@ public class RectificationTask {
     private LocalDateTime reviewTime;
 
     /**
-     * 整改奖励积分（即扣分值的50%，恢复的积分）
-     */
-    private Integer rewardPoints;
-
-    /**
-     * 村民整改说明（可选）
-     */
-    private String submitRemark;
-
-    /**
      * 复核备注（管理员填写）
      */
     private String reviewRemark;
 
     /**
+     * 整改奖励积分（即扣分值的50%，恢复的积分）
+     */
+    private Integer rewardPoints;
+
+    /**
      * 检查人ID（管理员）
      * 即创建整改任务时的评分人/检查人
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long inspectorId;
+    private String inspectorId;
 
     /**
      * 租户ID
@@ -178,13 +182,16 @@ public class RectificationTask {
 
     /**
      * 判断任务是否已逾期
+     * 如果截止时间已过且状态不是已销项，则视为逾期
      */
     public boolean isOverdue() {
-        return LocalDateTime.now().isAfter(deadline) && !STATUS_RESOLVED.equals(status);
+        return deadline != null && LocalDateTime.now().isAfter(deadline) 
+                && !STATUS_RESOLVED.equals(status);
     }
 
     /**
      * 判断任务是否可以提交整改
+     * 待整改或待复核状态都可以重新提交
      */
     public boolean canSubmit() {
         return STATUS_PENDING.equals(status) || STATUS_REVIEWING.equals(status);
@@ -192,6 +199,7 @@ public class RectificationTask {
 
     /**
      * 判断任务是否可以复核
+     * 只有待复核状态可以复核
      */
     public boolean canReview() {
         return STATUS_REVIEWING.equals(status);

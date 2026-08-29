@@ -62,7 +62,7 @@ public class ActivityRegistrationServiceImpl extends ServiceImpl<ActivityRegistr
         reg.setPhone(phone);
         reg.setRemark(remark);
         reg.setSignedIn(0);
-        reg.setCheckedOut(0);      // 新增：未签退
+        reg.setCheckedOut(0);
         reg.setCreateTime(LocalDateTime.now());
         save(reg);
     }
@@ -136,8 +136,6 @@ public class ActivityRegistrationServiceImpl extends ServiceImpl<ActivityRegistr
         }
 
         LocalDateTime now = LocalDateTime.now();
-        // 可根据业务需要限制签到时间范围（例如活动开始前1小时到结束后1小时）
-        // 这里不做严格限制，仅记录签到时间
 
         reg.setSignedIn(1);
         reg.setSignTime(now);
@@ -198,21 +196,31 @@ public class ActivityRegistrationServiceImpl extends ServiceImpl<ActivityRegistr
             if (user == null) {
                 throw new BusinessException("用户不存在");
             }
-            user.setPoints(user.getPoints() + activity.getRewardPoints());
+
+            // ================================================================
+            // 【修复点1】同步更新三个积分字段（v2.0 双轨制）
+            // ================================================================
+            int rewardPoints = activity.getRewardPoints();
+            user.setPoints(user.getPoints() + rewardPoints);
+            user.setTotalEarnedPoints(user.getTotalEarnedPoints() + rewardPoints);
+            user.setAvailablePoints(user.getAvailablePoints() + rewardPoints);
             userMapper.updateById(user);
 
             PointsFlow flow = new PointsFlow();
             flow.setUserId(user.getId());
-            flow.setChangeAmount(activity.getRewardPoints());
+            flow.setChangeAmount(rewardPoints);
             flow.setSourceType("activity");
-            flow.setSourceId(activity.getId());
+            // ================================================================
+            // 【修复点2】sourceId 转为 String
+            // ================================================================
+            flow.setSourceId(activity.getId().toString());
             flow.setRemark(String.format("活动签退奖励：%s（参与%d分钟）", activity.getTitle(), minutes));
             flow.setCreateTime(now);
             pointsFlowMapper.insert(flow);
 
             operationLogService.log(operatorId, "ACTIVITY_CHECKOUT",
                     String.format("签退成功，用户 %s 获得 %d 积分，参与时长 %d 分钟，报名记录ID:%d",
-                            user.getRealName(), activity.getRewardPoints(), minutes, registrationId));
+                            user.getRealName(), rewardPoints, minutes, registrationId));
         } else {
             operationLogService.log(operatorId, "ACTIVITY_CHECKOUT",
                     String.format("签退成功，用户ID:%d，参与时长 %d 分钟，无积分奖励", reg.getUserId(), minutes));

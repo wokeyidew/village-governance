@@ -9,6 +9,9 @@ import java.time.LocalDateTime;
  * 用于前端展示扣分项绑定的证据信息
  * 包括照片、拍摄时间、检查人、规则依据等
  *
+ * 修复说明（2026-08-30）：
+ * - inspectorId 和 batchId 改为 String 类型，与雪花 ID 保持一致
+ *
  * @author system
  * @since 2026-08-18
  */
@@ -37,22 +40,24 @@ public class EvidenceVO {
     private String location;
 
     /**
-     * 检查人ID（管理员ID）
+     * 检查人ID（管理员ID，雪花ID字符串）
      */
-    private Long inspectorId;
+    private String inspectorId;
 
     /**
      * 检查人姓名（冗余字段，便于前端直接展示）
+     * 注意：需通过关联查询获取，本VO中暂不填充
      */
     private String inspectorName;
 
     /**
-     * 关联检查批次ID
+     * 关联检查批次ID（雪花ID字符串）
      */
-    private Long batchId;
+    private String batchId;
 
     /**
      * 检查批次名称（冗余字段）
+     * 注意：需通过关联查询获取，本VO中暂不填充
      */
     private String batchName;
 

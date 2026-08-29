@@ -79,11 +79,11 @@ CREATE TABLE `user` (
 
 -- 初始化：将现有 points 值赋给 total_earned_points 和 available_points
 INSERT INTO `user` VALUES 
-(50,1,NULL,'13800138000','村民1',NULL,NULL,0,'VILLAGER',118,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-06-20 17:06:06',0,NULL,NULL,118,118),
+(50,1,NULL,'13800138000','李国富',NULL,NULL,0,'VILLAGER',118,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-06-20 17:06:06',0,NULL,NULL,118,118),
 (51,1,NULL,'13800138001','村委管理员',NULL,NULL,0,'VILLAGE_ADMIN',0,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-06-20 17:06:15',0,NULL,NULL,0,0),
-(52,1,NULL,'13800138002','张三',NULL,NULL,0,'VILLAGER',150,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-07-18 08:00:00',0,NULL,NULL,150,150),
-(53,1,NULL,'13800138003','李四',NULL,NULL,0,'VILLAGER',90,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-07-18 08:00:00',0,NULL,NULL,90,90),
-(54,1,NULL,'13800138004','王五',NULL,NULL,0,'VILLAGER',200,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-07-18 08:00:00',0,NULL,NULL,200,200);
+(52,1,NULL,'13800138002','王秀英',NULL,NULL,0,'VILLAGER',150,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-07-18 08:00:00',0,NULL,NULL,150,150),
+(53,1,NULL,'13800138003','张德明',NULL,NULL,0,'VILLAGER',90,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-07-18 08:00:00',0,NULL,NULL,90,90),
+(54,1,NULL,'13800138004','刘伟强',NULL,NULL,0,'VILLAGER',200,'$2a$10$DQE7l5D6.AkXsorJWKEj5.aDOj0BNHYds3U8/sAv3WZSWw521HOFC','2026-07-18 08:00:00',0,NULL,NULL,200,200);
 
 -- ======================================================
 -- 3. 积分规则表（63条）
@@ -346,7 +346,7 @@ INSERT INTO `exchange_record` VALUES
 -- ======================================================
 DROP TABLE IF EXISTS `points_apply`;
 CREATE TABLE `points_apply` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
   `tenant_id` int NOT NULL,
   `user_id` int DEFAULT NULL,
   `rule_id` int DEFAULT NULL,
@@ -359,8 +359,9 @@ CREATE TABLE `points_apply` (
   `create_time` datetime DEFAULT NULL,
   `source_type` varchar(20) DEFAULT 'user',
   `inspector_id` int DEFAULT NULL,
-  `inspection_batch_id` bigint DEFAULT NULL,
+  `inspection_batch_id` varchar(64) DEFAULT NULL COMMENT '检查批次ID（雪花ID）',
   `inspection_date` date DEFAULT NULL,
+  `has_evidence` tinyint(1) DEFAULT '0' COMMENT '是否有证据：0-无，1-有',
   PRIMARY KEY (`id`),
   KEY `idx_tenant_status_time` (`tenant_id`,`status`,`create_time`),
   KEY `idx_source_type` (`source_type`),
@@ -368,18 +369,22 @@ CREATE TABLE `points_apply` (
   KEY `idx_inspection_date` (`inspection_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `points_apply` VALUES 
-(1,1,50,1,'今天把庭院打扫得干干净净，地面无垃圾杂物','/upload/20260715_yard_1.jpg','approved',51,'合格，继续保持！','2026-07-15 10:00:00','2026-07-15 09:00:00','user',NULL,NULL,NULL),
-(2,1,50,2,'农具柴草按要求整齐堆放，庭院物品摆放有序','/upload/20260714_yard_2.jpg','approved',51,'做得很规范！','2026-07-14 15:00:00','2026-07-14 14:00:00','user',NULL,NULL,NULL),
-(3,1,50,5,'坚持垃圾分类投放已满一个月，无混装现象','/upload/20260713_garbage_1.jpg','pending',NULL,NULL,NULL,'2026-07-13 09:30:00','user',NULL,NULL,NULL),
-(4,1,50,9,'每周主动清理家门口周边公共道路的垃圾','/upload/20260712_road_1.jpg','approved',51,'带动了周边邻居，值得表扬！','2026-07-12 17:00:00','2026-07-12 16:00:00','user',NULL,NULL,NULL),
-(5,1,50,13,'家禽全部实行圈养，圈舍卫生规范','/upload/20260711_chicken_1.jpg','pending',NULL,NULL,NULL,'2026-07-11 08:00:00','user',NULL,NULL,NULL),
-(6,1,50,16,'门前三包落实到位，卫生、绿化、秩序都好','/upload/20260710_yard_3.jpg','approved',51,'非常棒，全村示范！','2026-07-10 11:00:00','2026-07-10 10:00:00','user',NULL,NULL,NULL),
-(7,1,52,1,'打扫庭院卫生，保持干净整洁','','approved',51,'合格','2026-07-18 10:00:00','2026-07-18 09:00:00','user',NULL,NULL,NULL),
-(8,1,52,5,'坚持垃圾分类一个月，无混装','','approved',51,'很好','2026-07-18 10:00:00','2026-07-18 09:30:00','user',NULL,NULL,NULL),
-(9,1,53,2,'农具柴草摆放整齐，庭院有序','','approved',51,'通过','2026-07-18 10:00:00','2026-07-18 09:40:00','user',NULL,NULL,NULL),
-(10,1,54,1,'庭院地面干净无杂物','','approved',51,'合格','2026-07-18 10:00:00','2026-07-18 09:50:00','user',NULL,NULL,NULL),
-(11,1,54,9,'每周主动清理公共道路垃圾','','approved',51,'值得表扬','2026-07-18 10:00:00','2026-07-18 10:00:00','user',NULL,NULL,NULL);
+INSERT INTO `points_apply` (
+    id, tenant_id, user_id, rule_id, description, images, status,
+    auditor_id, audit_remark, audit_time, create_time, source_type,
+    inspector_id, inspection_batch_id, inspection_date, has_evidence
+) VALUES 
+(1,1,50,1,'今天把庭院打扫得干干净净，地面无垃圾杂物','/upload/20260715_yard_1.jpg','approved',51,'合格，继续保持！','2026-07-15 10:00:00','2026-07-15 09:00:00','user',NULL,NULL,NULL,0),
+(2,1,50,2,'农具柴草按要求整齐堆放，庭院物品摆放有序','/upload/20260714_yard_2.jpg','approved',51,'做得很规范！','2026-07-14 15:00:00','2026-07-14 14:00:00','user',NULL,NULL,NULL,0),
+(3,1,50,5,'坚持垃圾分类投放已满一个月，无混装现象','/upload/20260713_garbage_1.jpg','pending',NULL,NULL,NULL,'2026-07-13 09:30:00','user',NULL,NULL,NULL,0),
+(4,1,50,9,'每周主动清理家门口周边公共道路的垃圾','/upload/20260712_road_1.jpg','approved',51,'带动了周边邻居，值得表扬！','2026-07-12 17:00:00','2026-07-12 16:00:00','user',NULL,NULL,NULL,0),
+(5,1,50,13,'家禽全部实行圈养，圈舍卫生规范','/upload/20260711_chicken_1.jpg','pending',NULL,NULL,NULL,'2026-07-11 08:00:00','user',NULL,NULL,NULL,0),
+(6,1,50,16,'门前三包落实到位，卫生、绿化、秩序都好','/upload/20260710_yard_3.jpg','approved',51,'非常棒，全村示范！','2026-07-10 11:00:00','2026-07-10 10:00:00','user',NULL,NULL,NULL,0),
+(7,1,52,1,'打扫庭院卫生，保持干净整洁','','approved',51,'合格','2026-07-18 10:00:00','2026-07-18 09:00:00','user',NULL,NULL,NULL,0),
+(8,1,52,5,'坚持垃圾分类一个月，无混装','','approved',51,'很好','2026-07-18 10:00:00','2026-07-18 09:30:00','user',NULL,NULL,NULL,0),
+(9,1,53,2,'农具柴草摆放整齐，庭院有序','','approved',51,'通过','2026-07-18 10:00:00','2026-07-18 09:40:00','user',NULL,NULL,NULL,0),
+(10,1,54,1,'庭院地面干净无杂物','','approved',51,'合格','2026-07-18 10:00:00','2026-07-18 09:50:00','user',NULL,NULL,NULL,0),
+(11,1,54,9,'每周主动清理公共道路垃圾','','approved',51,'值得表扬','2026-07-18 10:00:00','2026-07-18 10:00:00','user',NULL,NULL,NULL,0);
 
 -- ======================================================
 -- 11. 积分流水表（含新村民）
@@ -390,38 +395,44 @@ CREATE TABLE `points_flow` (
   `user_id` int DEFAULT NULL,
   `change_amount` int DEFAULT NULL,
   `source_type` varchar(20) DEFAULT NULL,
-  `source_id` int DEFAULT NULL,
+  `source_id` varchar(64) DEFAULT NULL COMMENT '来源记录ID（关联points_apply.id）',
   `remark` varchar(255) DEFAULT NULL,
   `create_time` datetime DEFAULT NULL,
   `tenant_id` int NOT NULL DEFAULT '1',
+  -- ====== 新增三个字段 ======
+  `batch_id` varchar(64) DEFAULT NULL COMMENT '关联检查批次ID（雪花ID）',
+  `batch_name` varchar(100) DEFAULT NULL COMMENT '关联检查批次名称',
+  `apply_id` varchar(64) DEFAULT NULL COMMENT '关联积分申请/评分记录ID（雪花ID）',
   PRIMARY KEY (`id`),
-  KEY `idx_user_time` (`user_id`,`create_time`)
+  KEY `idx_user_time` (`user_id`,`create_time`),
+  KEY `idx_batch_id` (`batch_id`),
+  KEY `idx_apply_id` (`apply_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `points_flow` VALUES 
-(1,50,10,'apply',1,'积分申报审核通过:庭院地面干净整洁，无垃圾杂物','2026-07-15 10:00:00',1),
-(2,50,8,'apply',2,'积分申报审核通过:物品摆放有序，农具柴草堆放整齐','2026-07-14 15:00:00',1),
-(3,50,5,'apply',4,'积分申报审核通过:每周主动清理自家周边公共道路上的垃圾','2026-07-12 17:00:00',1),
-(4,50,15,'apply',6,'积分申报审核通过:门前三包落实到位（卫生、绿化、秩序）','2026-07-10 11:00:00',1),
-(5,52,10,'apply',7,'积分申报审核通过:庭院地面干净整洁，无垃圾杂物','2026-07-18 10:00:00',1),
-(6,52,15,'apply',8,'积分申报审核通过:严格按照四类垃圾分类，连续一个月无混装','2026-07-18 10:00:00',1),
-(7,53,8,'apply',9,'积分申报审核通过:物品摆放有序，农具柴草堆放整齐','2026-07-18 10:00:00',1),
-(8,54,10,'apply',10,'积分申报审核通过:庭院地面干净整洁，无垃圾杂物','2026-07-18 10:00:00',1),
-(9,54,5,'apply',11,'积分申报审核通过:每周主动清理自家周边公共道路上的垃圾','2026-07-18 10:00:00',1);
+(1,50,10,'apply','1','积分申报审核通过:庭院地面干净整洁，无垃圾杂物','2026-07-15 10:00:00',1,NULL,NULL,NULL),
+(2,50,8,'apply','2','积分申报审核通过:物品摆放有序，农具柴草堆放整齐','2026-07-14 15:00:00',1,NULL,NULL,NULL),
+(3,50,5,'apply','4','积分申报审核通过:每周主动清理自家周边公共道路上的垃圾','2026-07-12 17:00:00',1,NULL,NULL,NULL),
+(4,50,15,'apply','6','积分申报审核通过:门前三包落实到位（卫生、绿化、秩序）','2026-07-10 11:00:00',1,NULL,NULL,NULL),
+(5,52,10,'apply','7','积分申报审核通过:庭院地面干净整洁，无垃圾杂物','2026-07-18 10:00:00',1,NULL,NULL,NULL),
+(6,52,15,'apply','8','积分申报审核通过:严格按照四类垃圾分类，连续一个月无混装','2026-07-18 10:00:00',1,NULL,NULL,NULL),
+(7,53,8,'apply','9','积分申报审核通过:物品摆放有序，农具柴草堆放整齐','2026-07-18 10:00:00',1,NULL,NULL,NULL),
+(8,54,10,'apply','10','积分申报审核通过:庭院地面干净整洁，无垃圾杂物','2026-07-18 10:00:00',1,NULL,NULL,NULL),
+(9,54,5,'apply','11','积分申报审核通过:每周主动清理自家周边公共道路上的垃圾','2026-07-18 10:00:00',1,NULL,NULL,NULL);
 
 -- ======================================================
--- 12. 检查批次表（暂空）
+-- 12. 检查批次表
 -- ======================================================
 DROP TABLE IF EXISTS `inspection_batch`;
 CREATE TABLE `inspection_batch` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
   `batch_name` varchar(100) NOT NULL COMMENT '批次名称',
   `inspection_date` date NOT NULL COMMENT '检查日期',
   `scope` varchar(255) DEFAULT NULL COMMENT '检查范围描述',
   `inspector_group` varchar(100) DEFAULT NULL COMMENT '检查小组/负责人',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   `tenant_id` bigint NOT NULL COMMENT '租户ID',
-  `create_by` bigint DEFAULT NULL COMMENT '创建人ID',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建人ID（雪花ID）',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '逻辑删除标记',
@@ -431,16 +442,16 @@ CREATE TABLE `inspection_batch` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ======================================================
--- 13. 检查户汇总表（暂空）
+-- 13. 检查户汇总表
 -- ======================================================
 DROP TABLE IF EXISTS `inspection_household`;
 CREATE TABLE `inspection_household` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `batch_id` bigint NOT NULL COMMENT '关联检查批次ID',
+  `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
+  `batch_id` varchar(64) NOT NULL COMMENT '关联检查批次ID（雪花ID）',
   `user_id` int NOT NULL COMMENT '户主用户ID',
   `total_score` int NOT NULL DEFAULT '0' COMMENT '本次检查总得分',
   `detail_json` json DEFAULT NULL COMMENT '详细得分JSON',
-  `inspector_id` int DEFAULT NULL COMMENT '检查员ID',
+  `inspector_id` varchar(64) DEFAULT NULL COMMENT '检查员ID（雪花ID）',
   `remark` varchar(500) DEFAULT NULL COMMENT '检查备注',
   `tenant_id` bigint NOT NULL COMMENT '租户ID',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -574,7 +585,7 @@ CREATE TABLE `subscribe_message` (
 DROP TABLE IF EXISTS `inspection_publish`;
 CREATE TABLE `inspection_publish` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `batch_id` bigint NOT NULL COMMENT '检查批次ID',
+  `batch_id` varchar(64) NOT NULL COMMENT '检查批次ID（雪花ID）',
   `status` varchar(20) DEFAULT 'draft' COMMENT '状态：draft-草稿，published-已发布',
   `result_json` json DEFAULT NULL COMMENT '评比结果快照JSON',
   `published_at` datetime DEFAULT NULL COMMENT '发布时间',
@@ -691,13 +702,13 @@ CREATE TABLE `resident_profile` (
 -- ======================================================
 DROP TABLE IF EXISTS `score_evidence`;
 CREATE TABLE `score_evidence` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `apply_id` bigint NOT NULL COMMENT '关联积分申请/评分记录ID（points_apply.id）',
+    `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
+    `apply_id` varchar(64) NOT NULL COMMENT '关联积分申请/评分记录ID（雪花ID）',
     `photo_urls` varchar(1000) DEFAULT NULL COMMENT '照片URL列表（逗号分隔）',
     `photo_count` int DEFAULT '0' COMMENT '照片数量',
     `location` varchar(100) DEFAULT NULL COMMENT '拍摄位置（GPS或地址）',
-    `inspector_id` bigint DEFAULT NULL COMMENT '检查人ID',
-    `batch_id` bigint DEFAULT NULL COMMENT '关联检查批次ID',
+    `inspector_id` varchar(64) DEFAULT NULL COMMENT '检查人ID（雪花ID）',
+    `batch_id` varchar(64) DEFAULT NULL COMMENT '关联检查批次ID（雪花ID）',
     `rule_version` varchar(20) DEFAULT NULL COMMENT '规则版本号',
     `has_watermark` tinyint DEFAULT '0' COMMENT '是否已加水印：0-否，1-是',
     `rule_name` varchar(100) DEFAULT NULL COMMENT '扣分规则名称（冗余）',
@@ -717,10 +728,10 @@ CREATE TABLE `score_evidence` (
 -- ======================================================
 DROP TABLE IF EXISTS `rectification_task`;
 CREATE TABLE `rectification_task` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `apply_id` bigint NOT NULL COMMENT '关联积分申请/评分记录ID',
-    `user_id` bigint NOT NULL COMMENT '责任户主用户ID',
-    `batch_id` bigint DEFAULT NULL COMMENT '关联检查批次ID',
+    `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
+    `apply_id` varchar(64) NOT NULL COMMENT '关联积分申请/评分记录ID（雪花ID）',
+    `user_id` varchar(64) NOT NULL COMMENT '责任户主用户ID（雪花ID）',
+    `batch_id` varchar(64) DEFAULT NULL COMMENT '关联检查批次ID（雪花ID）',
     `rule_name` varchar(100) NOT NULL COMMENT '扣分规则名称',
     `requirement` varchar(500) DEFAULT NULL COMMENT '整改要求',
     `deadline` datetime NOT NULL COMMENT '整改截止时间',
@@ -731,10 +742,10 @@ CREATE TABLE `rectification_task` (
     `submit_remark` varchar(500) DEFAULT NULL COMMENT '整改说明',
     `review_result` varchar(20) DEFAULT NULL COMMENT '复核结果：passed通过/rejected不通过',
     `review_remark` varchar(500) DEFAULT NULL COMMENT '复核备注',
-    `reviewer_id` bigint DEFAULT NULL COMMENT '复核人ID',
+    `reviewer_id` varchar(64) DEFAULT NULL COMMENT '复核人ID（雪花ID）',
     `review_time` datetime DEFAULT NULL COMMENT '复核时间',
     `reward_points` int DEFAULT '0' COMMENT '整改奖励积分（扣分50%）',
-    `inspector_id` bigint DEFAULT NULL COMMENT '检查人ID',
+    `inspector_id` varchar(64) DEFAULT NULL COMMENT '检查人ID（雪花ID）',
     `tenant_id` int NOT NULL COMMENT '租户ID',
     `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -753,19 +764,19 @@ CREATE TABLE `rectification_task` (
 -- ======================================================
 DROP TABLE IF EXISTS `appeal_record`;
 CREATE TABLE `appeal_record` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `apply_id` bigint NOT NULL COMMENT '关联积分申请/评分记录ID',
-    `user_id` bigint NOT NULL COMMENT '申诉人用户ID',
+    `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
+    `apply_id` varchar(64) NOT NULL COMMENT '关联积分申请/评分记录ID（雪花ID）',
+    `user_id` varchar(64) NOT NULL COMMENT '申诉人用户ID（雪花ID）',
     `user_name` varchar(50) DEFAULT NULL COMMENT '申诉人姓名（冗余）',
     `reason` varchar(500) NOT NULL COMMENT '申诉理由',
     `evidence_photos` varchar(1000) DEFAULT NULL COMMENT '补充证据照片（逗号分隔）',
     `status` varchar(20) DEFAULT 'pending' COMMENT '状态：pending申诉中/resolved已处理',
     `decision` varchar(20) DEFAULT NULL COMMENT '复核决定：upheld维持/modified修改/revoked撤销',
     `decision_detail` varchar(500) DEFAULT NULL COMMENT '处理说明',
-    `reviewer_id` bigint DEFAULT NULL COMMENT '复核人ID',
+    `reviewer_id` varchar(64) DEFAULT NULL COMMENT '复核人ID（雪花ID）',
     `reviewer_name` varchar(50) DEFAULT NULL COMMENT '复核人姓名（冗余）',
     `review_time` datetime DEFAULT NULL COMMENT '复核时间',
-    `batch_id` bigint DEFAULT NULL COMMENT '关联检查批次ID',
+    `batch_id` varchar(64) DEFAULT NULL COMMENT '关联检查批次ID（雪花ID）',
     `tenant_id` int NOT NULL COMMENT '租户ID',
     `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -783,14 +794,14 @@ CREATE TABLE `appeal_record` (
 -- ======================================================
 DROP TABLE IF EXISTS `publish_snapshot`;
 CREATE TABLE `publish_snapshot` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `batch_id` bigint NOT NULL COMMENT '关联检查批次ID',
+    `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
+    `batch_id` varchar(64) NOT NULL COMMENT '关联检查批次ID（雪花ID）',
     `month` varchar(7) NOT NULL COMMENT '月份标识，如2026-08',
     `snapshot_data` json NOT NULL COMMENT '全量快照数据（排名+分数+标签）',
     `red_list` text DEFAULT NULL COMMENT '红榜户ID列表（JSON格式）',
     `black_list` text DEFAULT NULL COMMENT '黑榜户ID列表（JSON格式）',
     `publish_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
-    `publish_by` bigint DEFAULT NULL COMMENT '发布人ID',
+    `publish_by` varchar(64) DEFAULT NULL COMMENT '发布人ID（雪花ID）',
     `publish_by_name` varchar(50) DEFAULT NULL COMMENT '发布人姓名（冗余）',
     `tenant_id` int NOT NULL COMMENT '租户ID',
     `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -808,7 +819,7 @@ CREATE TABLE `publish_snapshot` (
 -- ======================================================
 DROP TABLE IF EXISTS `offline_sync_record`;
 CREATE TABLE `offline_sync_record` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
     `client_event_id` varchar(64) NOT NULL COMMENT '客户端事件ID（UUID）',
     `processed` tinyint DEFAULT '1' COMMENT '是否已处理：1-已处理',
     `process_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '处理时间',
@@ -835,7 +846,7 @@ ALTER TABLE `points_apply` ADD COLUMN IF NOT EXISTS `has_evidence` tinyint(1) DE
 -- ======================================================
 DROP TABLE IF EXISTS `quarterly_snapshot`;
 CREATE TABLE `quarterly_snapshot` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
     `tenant_id` int NOT NULL COMMENT '租户ID',
     `quarter` varchar(10) NOT NULL COMMENT '季度标识，如：2026-Q3',
     `user_id` int NOT NULL COMMENT '用户ID',
@@ -862,14 +873,14 @@ CREATE TABLE `quarterly_snapshot` (
 -- ======================================================
 DROP TABLE IF EXISTS `important_contribution`;
 CREATE TABLE `important_contribution` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
     `tenant_id` int NOT NULL COMMENT '租户ID',
     `user_id` int NOT NULL COMMENT '贡献人用户ID',
     `contribution_type` varchar(20) DEFAULT NULL COMMENT 'rescue/report/mediate/resource/help',
     `contribution_desc` varchar(500) NOT NULL COMMENT '贡献描述',
     `points` int NOT NULL COMMENT '认定积分',
     `status` varchar(20) DEFAULT 'pending' COMMENT 'pending/approved/rejected',
-    `approved_by` int DEFAULT NULL COMMENT '认定人ID',
+    `approved_by` int DEFAULT NULL COMMENT '认定人ID（用户ID，不是雪花）',
     `approved_time` datetime DEFAULT NULL COMMENT '认定时间',
     `evidence_photos` varchar(1000) DEFAULT NULL COMMENT '佐证照片（逗号分隔）',
     `remark` varchar(500) DEFAULT NULL COMMENT '备注',
@@ -885,10 +896,10 @@ CREATE TABLE `important_contribution` (
 -- ======================================================
 DROP TABLE IF EXISTS `activity_participation`;
 CREATE TABLE `activity_participation` (
-    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `id` varchar(64) NOT NULL COMMENT '主键ID（雪花ID）',
     `tenant_id` int NOT NULL COMMENT '租户ID',
     `user_id` int NOT NULL COMMENT '参与用户ID',
-    `activity_id` int DEFAULT NULL COMMENT '关联activity表ID',
+    `activity_id` int DEFAULT NULL COMMENT '关联activity表ID（int）',
     `activity_name` varchar(100) NOT NULL COMMENT '活动名称',
     `activity_type` varchar(20) DEFAULT 'regular' COMMENT 'regular/event/emergency',
     `earned_points` int DEFAULT 0 COMMENT '获得积分',

@@ -42,10 +42,19 @@ public class PointsFlowVO {
      */
     private String sourceTypeText;
 
+    // ================================================================
+    // 【修改点】sourceId 类型：Integer → String（v2.0.9 修复）
+    // 原因：数据库 source_id 为 varchar(64)，存储雪花 ID 字符串
+    // 若保持 Integer，前端 JavaScript 处理 19 位数字会丢失精度
+    // 关联表：points_apply.id（雪花ID，19位数字）
+    // ================================================================
     /**
-     * 来源记录ID（关联到对应表的ID）
+     * 来源记录ID（关联到对应表的ID，雪花ID字符串）
+     * 注意：雪花 ID 为 19 位数字，必须用 String 类型
+     * 关联 points_apply.id（雪花ID）
+     * 前端可直接使用，无需额外处理精度
      */
-    private Integer sourceId;
+    private String sourceId;
 
     /**
      * 变动备注

@@ -3,6 +3,7 @@ package com.scau.village.module.appeal.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.scau.village.common.context.UserContext;
 import com.scau.village.common.exception.BusinessException;
 import com.scau.village.module.appeal.entity.AppealRecord;
 import com.scau.village.module.appeal.mapper.AppealRecordMapper;
@@ -33,6 +34,14 @@ import java.util.List;
 /**
  * 申诉记录服务实现类
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 参数类型从 Long 改为 String，解决前端精度丢失问题
+ * - handleAppeal 中积分恢复同步更新 totalEarnedPoints 和 availablePoints
+ * - 修复 apply.getUserId().intValue() 的 NPE 风险
+ * - 修复 pointChange 判断逻辑，撤销评分时正确恢复积分
+ * - 修复 recordPointsFlow 中 sourceId 类型转换（Integer → String）
+ * - pointsApplyMapper.selectById 时使用 Long.parseLong 转换
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -50,24 +59,116 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
     private final ScoreEvidenceService scoreEvidenceService;
     private final RectificationTaskService rectificationTaskService;
 
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * 获取当前租户 ID，若为空则抛出异常
+     */
+    private Integer getTenantId() {
+        Integer tenantId = UserContext.getCurrentTenantId();
+        if (tenantId == null) {
+            throw new BusinessException("租户信息缺失，请重新登录");
+        }
+        return tenantId;
+    }
+
+    /**
+     * 根据 ID 和租户条件查询申诉记录
+     * 修复：参数类型从 Long 改为 String
+     */
+    private AppealRecord getAppealByIdWithTenant(String appealId) {
+        if (appealId == null || appealId.isEmpty()) {
+            throw new BusinessException("申诉ID不能为空");
+        }
+        Integer tenantId = getTenantId();
+        LambdaQueryWrapper<AppealRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AppealRecord::getId, appealId)
+               .eq(AppealRecord::getTenantId, tenantId);
+        AppealRecord record = getOne(wrapper);
+        if (record == null) {
+            log.warn("申诉记录不存在，appealId={}, tenantId={}", appealId, tenantId);
+            throw new BusinessException("申诉记录不存在");
+        }
+        return record;
+    }
+
+    /**
+     * 安全获取用户 ID 的 Long 值
+     */
+    private Long safeGetUserId(PointsApply apply) {
+        if (apply == null) {
+            return null;
+        }
+        Object userIdObj = apply.getUserId();
+        if (userIdObj == null) {
+            return null;
+        }
+        if (userIdObj instanceof Long) {
+            return (Long) userIdObj;
+        } else if (userIdObj instanceof Integer) {
+            return ((Integer) userIdObj).longValue();
+        }
+        return Long.valueOf(userIdObj.toString());
+    }
+
+    /**
+     * 同步更新用户积分（points / totalEarnedPoints / availablePoints）
+     */
+    private void updateUserPoints(User user, int changeAmount) {
+        if (user == null || changeAmount == 0) {
+            return;
+        }
+        user.setPoints(user.getPoints() + changeAmount);
+        user.setTotalEarnedPoints(user.getTotalEarnedPoints() + changeAmount);
+        user.setAvailablePoints(user.getAvailablePoints() + changeAmount);
+        userMapper.updateById(user);
+        log.info("用户积分更新：userId={}, changeAmount={}, 新积分={}, 总获得={}, 可用={}",
+                user.getId(), changeAmount, user.getPoints(),
+                user.getTotalEarnedPoints(), user.getAvailablePoints());
+    }
+
+    /**
+     * 记录积分流水（申诉来源）
+     * 修复：sourceId 转为 String
+     */
+    private void recordPointsFlow(User user, int changeAmount, Integer applyId, String remark) {
+        if (user == null || changeAmount == 0) {
+            return;
+        }
+        PointsFlow flow = new PointsFlow();
+        flow.setUserId(user.getId());
+        flow.setChangeAmount(changeAmount);
+        flow.setSourceType("appeal");
+        flow.setSourceId(String.valueOf(applyId));
+        flow.setRemark(remark);
+        flow.setCreateTime(LocalDateTime.now());
+        flow.setTenantId(user.getTenantId());
+        pointsFlowMapper.insert(flow);
+    }
+
     // ==================== 村民端方法 ====================
 
+    /**
+     * 提交申诉
+     * 修复：applyId 参数类型从 Long 改为 String
+     */
     @Override
     @Transactional
-    public AppealRecord submitAppeal(Long applyId, Long userId, String reason,
-                                      String evidencePhotos, Integer tenantId, Long batchId) {
+    public AppealRecord submitAppeal(String applyId, Long userId, String reason,
+                                      String evidencePhotos, Integer tenantId, String batchId) {
         if (applyId == null || userId == null || StringUtils.isBlank(reason)) {
             throw new BusinessException("申诉参数不完整");
         }
 
-        // 1. 检查积分记录是否存在
-        PointsApply apply = pointsApplyMapper.selectById(applyId);
+        // 1. 检查积分记录是否存在（将 String 转换为 Long）
+        PointsApply apply = pointsApplyMapper.selectById(Long.parseLong(applyId));
         if (apply == null) {
             throw new BusinessException("积分记录不存在");
         }
 
         // 2. 只能申诉自己的扣分记录
-        if (!apply.getUserId().equals(userId.intValue())) {
+        Long applyUserId = safeGetUserId(apply);
+        if (applyUserId == null || !applyUserId.equals(userId)) {
             throw new BusinessException("只能申诉自己的积分记录");
         }
 
@@ -91,10 +192,10 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
             throw new BusinessException("用户不存在");
         }
 
-        // 6. 创建申诉记录
+        // 6. 创建申诉记录（实体字段为 String）
         AppealRecord record = new AppealRecord();
         record.setApplyId(applyId);
-        record.setUserId(userId);
+        record.setUserId(String.valueOf(userId));
         record.setUserName(user.getRealName());
         record.setReason(reason);
         record.setEvidencePhotos(evidencePhotos);
@@ -116,7 +217,7 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
         }
         Page<AppealRecord> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<AppealRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AppealRecord::getUserId, userId)
+        wrapper.eq(AppealRecord::getUserId, String.valueOf(userId))
                 .eq(StringUtils.isNotBlank(status), AppealRecord::getStatus, status)
                 .orderByDesc(AppealRecord::getCreateTime);
 
@@ -127,17 +228,28 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
         return voPage;
     }
 
+    /**
+     * 获取申诉详情（村民端）
+     * 修复：appealId 参数类型从 Long 改为 String
+     */
     @Override
-    public AppealDetailVO getAppealDetail(Long appealId, Long userId) {
+    public AppealDetailVO getAppealDetail(String appealId, Long userId) {
         if (appealId == null || userId == null) {
             throw new BusinessException("参数不完整");
         }
-        AppealRecord record = getById(appealId);
+
+        Integer tenantId = getTenantId();
+
+        LambdaQueryWrapper<AppealRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AppealRecord::getId, appealId)
+               .eq(AppealRecord::getTenantId, tenantId);
+        AppealRecord record = getOne(wrapper);
+
         if (record == null) {
             throw new BusinessException("申诉记录不存在");
         }
         // 权限校验：只能查看自己的申诉
-        if (!record.getUserId().equals(userId)) {
+        if (!record.getUserId().equals(String.valueOf(userId))) {
             throw new BusinessException("无权查看此申诉");
         }
         return convertToDetailVO(record);
@@ -149,8 +261,8 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
             throw new BusinessException("用户ID不能为空");
         }
         List<AppealVO> counts = new ArrayList<>();
-        counts.add(createCountVO(STATUS_PENDING, appealRecordMapper.countByUserIdAndStatus(userId, STATUS_PENDING)));
-        counts.add(createCountVO(STATUS_RESOLVED, appealRecordMapper.countByUserIdAndStatus(userId, STATUS_RESOLVED)));
+        counts.add(createCountVO(STATUS_PENDING, appealRecordMapper.countByUserIdAndStatus(String.valueOf(userId), STATUS_PENDING)));
+        counts.add(createCountVO(STATUS_RESOLVED, appealRecordMapper.countByUserIdAndStatus(String.valueOf(userId), STATUS_RESOLVED)));
         return counts;
     }
 
@@ -181,15 +293,29 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
         return voPage;
     }
 
+    /**
+     * 管理员获取申诉详情
+     * 修复：appealId 参数类型从 Long 改为 String
+     */
     @Override
-    public AppealDetailVO getAdminAppealDetail(Long appealId) {
-        if (appealId == null) {
+    public AppealDetailVO getAdminAppealDetail(String appealId) {
+        if (appealId == null || appealId.isEmpty()) {
             throw new BusinessException("申诉ID不能为空");
         }
-        AppealRecord record = getById(appealId);
+
+        Integer tenantId = getTenantId();
+
+        LambdaQueryWrapper<AppealRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AppealRecord::getId, appealId)
+               .eq(AppealRecord::getTenantId, tenantId);
+        AppealRecord record = getOne(wrapper);
+
         if (record == null) {
+            log.warn("【管理员-申诉详情】申诉记录不存在，appealId={}, tenantId={}", appealId, tenantId);
             throw new BusinessException("申诉记录不存在");
         }
+
+        log.info("【管理员-申诉详情】查询成功，appealId={}, status={}", appealId, record.getStatus());
         return convertToDetailVO(record);
     }
 
@@ -201,22 +327,27 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
         return appealRecordMapper.selectPendingAppeals(tenantId);
     }
 
+    /**
+     * 管理员处理申诉
+     * 修复：appealId 参数类型从 Long 改为 String
+     */
     @Override
     @Transactional
-    public AppealRecord handleAppeal(Long appealId, Long reviewerId, String decision,
+    public AppealRecord handleAppeal(String appealId, Long reviewerId, String decision,
                                       String decisionDetail, Integer newPoints) {
         if (appealId == null || reviewerId == null || StringUtils.isBlank(decision)) {
             throw new BusinessException("处理参数不完整");
         }
 
-        // 1. 查询申诉记录
-        AppealRecord record = getById(appealId);
-        if (record == null) {
-            throw new BusinessException("申诉记录不存在");
-        }
+        // 1. 带租户条件查询申诉记录
+        AppealRecord record = getAppealByIdWithTenant(appealId);
+
         if (!STATUS_PENDING.equals(record.getStatus())) {
             throw new BusinessException("该申诉已处理，请勿重复操作");
         }
+
+        log.info("【处理申诉】查询到申诉记录，appealId={}, applyId={}, status={}",
+                appealId, record.getApplyId(), record.getStatus());
 
         // 2. 获取复核人信息
         User reviewer = userMapper.selectById(reviewerId);
@@ -224,139 +355,98 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
             throw new BusinessException("复核人不存在");
         }
 
-        // 3. 查询关联的积分记录
-        PointsApply apply = pointsApplyMapper.selectById(record.getApplyId());
+        // 3. 查询关联的积分记录（record.getApplyId() 是 String，转为 Long）
+        PointsApply apply = pointsApplyMapper.selectById(Long.parseLong(record.getApplyId()));
         if (apply == null) {
             throw new BusinessException("关联的积分记录不存在");
         }
 
-        // 4. 根据决定执行不同操作
+        // 4. 查询原规则获取分值
+        PointsRule rule = pointsRuleMapper.selectById(apply.getRuleId());
+        if (rule == null) {
+            throw new BusinessException("关联的规则不存在");
+        }
+        int originalPoints = rule.getPoints(); // 负数（扣分）
+
+        // 5. 根据决定执行不同操作
         boolean needUpdatePoints = false;
-        int originalPoints = 0;
-        int newPointsValue = 0;
+        int finalPoints = originalPoints; // 最终分值（负数或0）
+        String flowRemark = "";
 
         if (DECISION_UPHELD.equals(decision)) {
             // 维持原判：不做任何修改
             log.info("申诉维持原判，appealId={}, applyId={}", appealId, record.getApplyId());
         } else if (DECISION_MODIFIED.equals(decision)) {
-            // 修改评分：调整分值
+            // 修改评分：调整分值（newPoints 是扣分值，如 -3）
             if (newPoints == null) {
                 throw new BusinessException("修改评分时必须指定新的分值");
             }
-            // 获取原规则分值
-            PointsRule rule = pointsRuleMapper.selectById(apply.getRuleId());
-            if (rule == null) {
-                throw new BusinessException("关联的规则不存在");
+            if (newPoints >= 0) {
+                throw new BusinessException("修改评分时新分值应为负数（表示扣分）");
             }
-            originalPoints = rule.getPoints();
-            // 新分值不能与原来相同（否则无意义）
             if (originalPoints == newPoints) {
                 throw new BusinessException("新分值不能与原分值相同");
             }
-            // 只允许调整扣分幅度（仍为负数或零？实际业务中可能允许改为加分，但这里限制为只能改小扣分，即从-10改为-5或0）
-            // 简单处理：允许任何修改，但需要更新积分
             needUpdatePoints = true;
-            newPointsValue = newPoints;
+            finalPoints = newPoints;
+            flowRemark = String.format("申诉修改评分：原扣%d分，改为%d分",
+                    Math.abs(originalPoints), Math.abs(finalPoints));
             log.info("申诉修改评分，appealId={}, applyId={}, 原分值={}, 新分值={}",
-                    appealId, record.getApplyId(), originalPoints, newPointsValue);
+                    appealId, record.getApplyId(), originalPoints, finalPoints);
         } else if (DECISION_REVOKED.equals(decision)) {
-            // 撤销评分：完全撤销扣分，恢复全部积分
-            PointsRule rule = pointsRuleMapper.selectById(apply.getRuleId());
-            if (rule == null) {
-                throw new BusinessException("关联的规则不存在");
-            }
-            originalPoints = rule.getPoints();
-            // 撤销即恢复到0（即不扣分）
+            // 撤销评分：完全撤销扣分（分值变为0）
             needUpdatePoints = true;
-            newPointsValue = 0;
+            finalPoints = 0;
+            flowRemark = String.format("申诉撤销评分：原扣%d分，已全部恢复",
+                    Math.abs(originalPoints));
             log.info("申诉撤销评分，appealId={}, applyId={}", appealId, record.getApplyId());
         } else {
             throw new BusinessException("无效的复核决定，请使用 upheld / modified / revoked");
         }
 
-        // 5. 如果需要更新积分
+        // 6. 如果需要更新积分
         if (needUpdatePoints) {
-            // 计算积分差额：原分值（负数）到新分值（0或较小负数）的差额
-            // 例如原-10，新-5，则用户应增加5分；原-10，新0，则用户增加10分
-            int diff = originalPoints - newPointsValue; // 原-10 - 新-5 = -5，即用户增加5分
-            // 实际上我们希望的是：用户积分增加 = 原分值绝对值 - 新分值绝对值？或者直接用差值
-            // 更准确：用户积分 = 用户积分 + (originalPoints - newPointsValue)
-            // 例如 originalPoints = -10, newPointsValue = -5, 则 diff = -10 - (-5) = -5, 用户积分增加5分
-            // 如果 originalPoints = -10, newPointsValue = 0, diff = -10 - 0 = -10, 用户积分增加10分
-            // 注意originalPoints是负数，newPointsValue也是负数或0，diff为负数表示增加积分
-            int changeAmount = originalPoints - newPointsValue; // 正值表示扣减积分，负值表示增加积分
-            // 但我们的逻辑是：如果申诉通过，应该恢复部分或全部积分，即changeAmount为负
-            // 所以我们实际要增加用户的积分： userPoints = userPoints - changeAmount
-            // 但更简单：直接计算新的分值后，更新points_apply的分值，然后调整用户积分。
-            // 先更新points_apply的rule_id? 但规则id不变，我们只记录修改分值？可以新增字段记录修改后的分值。
-            // 设计上，points_apply中存储的是规则id，分值从规则表获取。我们如果修改评分，可能需要记录修改后的分值到points_apply的某个字段。
-            // 简单起见，我们可以直接在points_apply中记录修改后的分值（新增一个字段modified_points），或者直接修改规则分值？但不推荐。
-            // 这里我们采用：在points_apply中新增一个字段 custom_points，如果为null则使用规则分值，否则使用自定义分值。
-            // 但为了快速实现，我们可以在申诉处理时，直接修改points_apply的rule_id为新的规则？但新的规则可能不存在。
-            // 更合理的做法：在申诉处理时，如果决定修改评分，则直接更新points_apply的关联规则为新的规则（但可能没有对应规则）。
-            // 鉴于时间，我们简化：直接在申诉记录中记录修改后的分值，并在积分流水和用户积分调整中体现。
-            // 我们暂时不修改points_apply的分值，而是直接在用户积分上调整差值。
-            // 但这样会导致points_apply记录的分值与实际扣分不符，为了审计追溯，我们可以在points_apply中新增一个字段记录申诉修改后的分值。
-            // 这里为了演示，我们直接调整用户积分，并记录积分流水，同时更新申诉记录中的决定。
-            // 更佳方案：在points_apply表中增加 modified_score 字段。
-            // 由于我们没有这个字段，暂时先不做积分调整，只记录决定，后续再考虑。
-            // 但业务上，申诉处理需要调整积分，所以必须实现。
-            // 我们采用：在points_apply表中增加一个字段 'modified_points'，用于存储申诉修改后的分值。
-            // 但考虑到我们没有修改表结构，这里我们改为在PointsApply实体中增加一个transient字段或直接使用一个额外的字段。
-            // 为了快速实现，我们直接修改用户积分，然后记录一条积分流水，说明是申诉调整。
-            // 同时，我们将申诉决定记录到appeal_record中，并在points_apply的备注中记录修改信息。
-            // 这是一个简化方案，实际应该修改points_apply的分值或关联规则。
-            // 我们暂时这样实现：调整用户积分，记录流水。
-            User user = userMapper.selectById(apply.getUserId());
-            if (user == null) {
-                throw new BusinessException("用户不存在");
-            }
-            int currentPoints = user.getPoints();
-            // 计算应增加多少分（因为申诉成功，应该增加积分）
-            // originalPoints是负数，newPointsValue也是负数或0，所以originalPoints - newPointsValue可能为正或负
-            // 如果originalPoints = -10, newPointsValue = -5, 则 diff = -5, 用户积分应增加5分
-            // 如果originalPoints = -10, newPointsValue = 0, diff = -10, 用户积分应增加10分
-            int pointChange = originalPoints - newPointsValue; // 负值表示增加积分
-            // 但由于originalPoints是负数，newPointsValue也是负数或0，所以pointChange可能是负数或正数。
-            // 例如 -10 - (-5) = -5，表示用户应增加5分，但pointChange为负，我们判断：
-            if (pointChange < 0) {
-                // 需要增加积分
-                int increase = Math.abs(pointChange);
-                user.setPoints(currentPoints + increase);
-                userMapper.updateById(user);
+            int change = originalPoints - finalPoints;
+
+            if (change < 0) {
+                int increaseAmount = Math.abs(change);
+                User user = userMapper.selectById(apply.getUserId());
+                if (user == null) {
+                    throw new BusinessException("用户不存在");
+                }
+
+                // 同步更新三个积分字段
+                updateUserPoints(user, increaseAmount);
 
                 // 记录积分流水
-                PointsFlow flow = new PointsFlow();
-                flow.setUserId(user.getId());
-                flow.setChangeAmount(increase);
-                flow.setSourceType("appeal");
-                flow.setSourceId(apply.getId());
-                flow.setRemark(String.format("申诉修改评分：原扣%d分，改为%d分，恢复%d分",
-                        Math.abs(originalPoints), Math.abs(newPointsValue), increase));
-                flow.setCreateTime(LocalDateTime.now());
-                pointsFlowMapper.insert(flow);
-            } else if (pointChange > 0) {
-                // 实际上不应该出现，因为申诉只会减轻处罚，不会加重
-                throw new BusinessException("申诉处理逻辑错误：不应加重处罚");
-            }
-            // 更新points_apply的备注，记录修改信息
-            apply.setAuditRemark("申诉修改评分：原扣" + Math.abs(originalPoints) + "分，改为" + Math.abs(newPointsValue) + "分");
-            pointsApplyMapper.updateById(apply);
+                recordPointsFlow(user, increaseAmount, apply.getId(), flowRemark);
 
-            // 如果申诉撤销评分，需要删除对应的整改任务
-            if (DECISION_REVOKED.equals(decision)) {
-                // 删除整改任务（逻辑删除）
-                rectificationTaskService.updateStatusByApplyId(record.getApplyId(), "deleted");
-                // 删除证据（逻辑删除）
-                scoreEvidenceService.deleteByApplyId(record.getApplyId());
+                log.info("【处理申诉】用户积分恢复，userId={}, 恢复{}分, 原因={}",
+                        user.getId(), increaseAmount, decision);
+
+                // 更新 points_apply 的备注
+                apply.setAuditRemark(flowRemark);
+                pointsApplyMapper.updateById(apply);
+
+                // 如果是撤销评分，删除整改任务和证据（record.getApplyId() 是 String）
+                if (DECISION_REVOKED.equals(decision)) {
+                    rectificationTaskService.updateStatusByApplyId(record.getApplyId(), "deleted");
+                    // scoreEvidenceService.deleteByApplyId 可能需要 String，保持统一
+                    scoreEvidenceService.deleteByApplyId(record.getApplyId());
+                    log.info("【处理申诉】撤销评分，已删除整改任务和证据，applyId={}", record.getApplyId());
+                }
+            } else if (change > 0) {
+                log.error("【处理申诉】异常：申诉处理导致扣分加重，originalPoints={}, finalPoints={}, change={}",
+                        originalPoints, finalPoints, change);
+                throw new BusinessException("申诉处理逻辑错误：不会加重处罚");
             }
         }
 
-        // 6. 更新申诉记录
+        // 7. 更新申诉记录
         record.setStatus(STATUS_RESOLVED);
         record.setDecision(decision);
         record.setDecisionDetail(decisionDetail);
-        record.setReviewerId(reviewerId);
+        record.setReviewerId(String.valueOf(reviewerId));
         record.setReviewerName(reviewer.getRealName());
         record.setReviewTime(LocalDateTime.now());
         record.setUpdateTime(LocalDateTime.now());
@@ -373,29 +463,41 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
         if (userId == null || StringUtils.isBlank(status)) {
             return 0L;
         }
-        return appealRecordMapper.countByUserIdAndStatus(userId, status);
+        return appealRecordMapper.countByUserIdAndStatus(String.valueOf(userId), status);
     }
 
+    /**
+     * 根据批次ID统计申诉数量
+     * 修复：batchId 参数类型从 Long 改为 String
+     */
     @Override
-    public Long countByBatchId(Long batchId) {
-        if (batchId == null) {
+    public Long countByBatchId(String batchId) {
+        if (batchId == null || batchId.isEmpty()) {
             return 0L;
         }
         return appealRecordMapper.countByBatchId(batchId);
     }
 
+    /**
+     * 检查某条积分记录是否存在申诉（任意状态）
+     * 修复：applyId 参数类型从 Long 改为 String
+     */
     @Override
-    public boolean existsByApplyId(Long applyId) {
-        if (applyId == null) {
+    public boolean existsByApplyId(String applyId) {
+        if (applyId == null || applyId.isEmpty()) {
             return false;
         }
         AppealRecord record = appealRecordMapper.selectByApplyId(applyId);
         return record != null && !record.getDeleted().equals(1);
     }
 
+    /**
+     * 检查某条积分记录是否存在待处理的申诉
+     * 修复：applyId 参数类型从 Long 改为 String
+     */
     @Override
-    public boolean hasPendingAppeal(Long applyId) {
-        if (applyId == null) {
+    public boolean hasPendingAppeal(String applyId) {
+        if (applyId == null || applyId.isEmpty()) {
             return false;
         }
         AppealRecord record = appealRecordMapper.selectByApplyId(applyId);
@@ -418,28 +520,25 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
     private AppealVO convertToVO(AppealRecord record) {
         AppealVO vo = new AppealVO();
         BeanUtils.copyProperties(record, vo);
-        // 补充信息（如用户名已存在，无需额外查询）
         return vo;
     }
 
     private AppealDetailVO convertToDetailVO(AppealRecord record) {
         AppealDetailVO vo = new AppealDetailVO();
         BeanUtils.copyProperties(record, vo);
-        // 补充关联的积分记录和证据信息
-        PointsApply apply = pointsApplyMapper.selectById(record.getApplyId());
-        if (apply != null) {
-            vo.setApplyStatus(apply.getStatus());
-            vo.setApplyDescription(apply.getDescription());
-            vo.setApplyImages(apply.getImages());
-            // 查询规则名称
-            PointsRule rule = pointsRuleMapper.selectById(apply.getRuleId());
-            if (rule != null) {
-                vo.setRuleName(rule.getRuleName());
-                vo.setRulePoints(rule.getPoints());
+        // record.getApplyId() 是 String，转为 Long 查询
+        if (record.getApplyId() != null) {
+            PointsApply apply = pointsApplyMapper.selectById(Long.parseLong(record.getApplyId()));
+            if (apply != null) {
+                vo.setApplyStatus(apply.getStatus());
+                vo.setApplyDescription(apply.getDescription());
+                vo.setApplyImages(apply.getImages());
+                PointsRule rule = pointsRuleMapper.selectById(apply.getRuleId());
+                if (rule != null) {
+                    vo.setRuleName(rule.getRuleName());
+                    vo.setRulePoints(rule.getPoints());
+                }
             }
-            // 查询证据
-            // 可以通过ScoreEvidenceService获取证据照片
-            // 简化：直接使用apply的images
         }
         return vo;
     }

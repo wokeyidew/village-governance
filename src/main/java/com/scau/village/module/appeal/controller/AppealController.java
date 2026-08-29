@@ -25,6 +25,12 @@ import java.util.List;
  * 申诉记录控制器
  * 提供村民端和管理端的申诉相关接口
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 参数从 Long 改为 String，Service 层方法参数同步改为 String
+ * - 移除 Controller 中多余的 Long.parseLong() 转换，直接传递 String 给 Service
+ * - 保留业务校验（扣分项校验）
+ * - 修复 pointsApplyMapper.selectById 参数类型：将 String 转换为 Long
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -44,9 +50,9 @@ public class AppealController {
      * 村民提交申诉
      * 
      * 修复说明：
-     * - SubmitAppealDto 中的 applyId 和 batchId 已改为 String 类型
-     * - 手动调用 Long.parseLong() 转换为 Long 后调用 Service
+     * - SubmitAppealDto 中的 applyId 和 batchId 为 String 类型，直接传递给 Service
      * - 增加扣分项校验：只有扣分记录才能申诉
+     * - 将 applyId 转换为 Long 后再查询 points_apply 表
      *
      * @param dto 提交申诉请求体
      * @return 操作结果
@@ -66,25 +72,15 @@ public class AppealController {
             return Result.error(400, "租户信息缺失，请重新登录");
         }
 
-        // 将 String 转换为 Long
-        Long applyId;
+        // 校验积分记录是否存在，并判断是否为扣分项
+        Long applyIdLong;
         try {
-            applyId = Long.parseLong(dto.getApplyId());
+            applyIdLong = Long.parseLong(dto.getApplyId());
         } catch (NumberFormatException e) {
             log.warn("【申诉提交】applyId 格式错误: {}", dto.getApplyId());
             return Result.error(400, "积分记录ID格式错误");
         }
-
-        Long batchId;
-        try {
-            batchId = Long.parseLong(dto.getBatchId());
-        } catch (NumberFormatException e) {
-            log.warn("【申诉提交】batchId 格式错误: {}", dto.getBatchId());
-            return Result.error(400, "批次ID格式错误");
-        }
-
-        // 校验积分记录是否存在，并判断是否为扣分项
-        PointsApply apply = pointsApplyMapper.selectById(applyId);
+        PointsApply apply = pointsApplyMapper.selectById(applyIdLong);
         if (apply == null) {
             log.warn("【申诉提交】积分记录不存在，applyId={}", dto.getApplyId());
             return Result.error(400, "积分记录不存在");
@@ -107,13 +103,14 @@ public class AppealController {
         Long userId = ctx.getUserId();
         Integer tenantId = ctx.getTenantId();
 
+        // 直接传递 String 给 Service
         appealRecordService.submitAppeal(
-                applyId,
+                dto.getApplyId(),
                 userId,
                 dto.getReason(),
                 dto.getEvidencePhotos(),
                 tenantId,
-                batchId
+                dto.getBatchId()
         );
 
         log.info("【申诉提交】申诉提交成功，applyId={}, userId={}", dto.getApplyId(), userId);
@@ -122,7 +119,6 @@ public class AppealController {
 
     /**
      * 获取当前用户的申诉列表（村民端）
-     * 可按状态筛选
      *
      * @param status 申诉状态（pending/resolved），可选
      * @param page   页码，默认1
@@ -146,9 +142,7 @@ public class AppealController {
     /**
      * 获取申诉详情（村民端）
      * 
-     * 修复说明：
-     * - 参数类型由 Long 改为 String，解决前端 JavaScript 传递 19 位雪花 ID 时精度丢失的问题
-     * - 手动调用 Long.parseLong(appealId) 转换为 Long 类型后调用 Service
+     * 修复说明：参数为 String 类型，直接传递给 Service
      *
      * @param appealId 申诉记录ID（字符串形式，由雪花算法生成）
      * @return 申诉详情
@@ -164,15 +158,9 @@ public class AppealController {
         }
         Long userId = ctx.getUserId();
 
-        try {
-            Long appealIdLong = Long.parseLong(appealId);
-            AppealDetailVO detail = appealRecordService.getAppealDetail(appealIdLong, userId);
-            log.info("【申诉详情-村民端】查询成功，appealId={}", appealId);
-            return Result.success(detail);
-        } catch (NumberFormatException e) {
-            log.warn("【申诉详情-村民端】appealId 格式错误: {}", appealId);
-            return Result.error(400, "申诉ID格式错误");
-        }
+        AppealDetailVO detail = appealRecordService.getAppealDetail(appealId, userId);
+        log.info("【申诉详情-村民端】查询成功，appealId={}", appealId);
+        return Result.success(detail);
     }
 
     /**
@@ -219,9 +207,7 @@ public class AppealController {
     /**
      * 管理员获取申诉详情
      * 
-     * 修复说明：
-     * - 参数类型由 Long 改为 String，解决前端 JavaScript 传递 19 位雪花 ID 时精度丢失的问题
-     * - 手动调用 Long.parseLong(appealId) 转换为 Long 类型后调用 Service
+     * 修复说明：参数为 String 类型，直接传递给 Service
      *
      * @param appealId 申诉记录ID（字符串形式，由雪花算法生成）
      * @return 申诉详情
@@ -232,15 +218,9 @@ public class AppealController {
 
         SecurityUtils.checkRole("VILLAGE_ADMIN", "GRID_MEMBER");
 
-        try {
-            Long appealIdLong = Long.parseLong(appealId);
-            AppealDetailVO detail = appealRecordService.getAdminAppealDetail(appealIdLong);
-            log.info("【申诉详情-管理员端】查询成功，appealId={}", appealId);
-            return Result.success(detail);
-        } catch (NumberFormatException e) {
-            log.warn("【申诉详情-管理员端】appealId 格式错误: {}", appealId);
-            return Result.error(400, "申诉ID格式错误");
-        }
+        AppealDetailVO detail = appealRecordService.getAdminAppealDetail(appealId);
+        log.info("【申诉详情-管理员端】查询成功，appealId={}", appealId);
+        return Result.success(detail);
     }
 
     /**
@@ -264,8 +244,7 @@ public class AppealController {
      * 管理员处理申诉
      * 
      * 修复说明：
-     * - HandleAppealDto 中的 appealId 已改为 String 类型
-     * - 手动调用 Long.parseLong() 转换为 Long 后调用 Service
+     * - HandleAppealDto 中的 appealId 为 String 类型，直接传递给 Service
      *
      * @param dto 处理申诉请求体
      * @return 操作结果
@@ -283,35 +262,25 @@ public class AppealController {
         }
         Long reviewerId = ctx.getUserId();
 
-        Long appealId;
-        try {
-            appealId = Long.parseLong(dto.getAppealId());
-        } catch (NumberFormatException e) {
-            log.warn("【处理申诉】appealId 格式错误: {}", dto.getAppealId());
-            return Result.error(400, "申诉ID格式错误");
-        }
-
         log.info("【处理申诉】复核人ID={}, appealId={}, decision={}, detail={}, newPoints={}",
-                reviewerId, appealId, dto.getDecision(), dto.getDecisionDetail(), dto.getNewPoints());
+                reviewerId, dto.getAppealId(), dto.getDecision(), dto.getDecisionDetail(), dto.getNewPoints());
 
         appealRecordService.handleAppeal(
-                appealId,
+                dto.getAppealId(),
                 reviewerId,
                 dto.getDecision(),
                 dto.getDecisionDetail(),
                 dto.getNewPoints()
         );
 
-        log.info("【处理申诉】申诉处理完成，appealId={}, reviewerId={}", appealId, reviewerId);
+        log.info("【处理申诉】申诉处理完成，appealId={}, reviewerId={}", dto.getAppealId(), reviewerId);
         return Result.success(null);
     }
 
     /**
      * 检查某条积分记录是否已存在待处理的申诉
      * 
-     * 修复说明：
-     * - 参数类型由 Long 改为 String，解决前端 JavaScript 传递 19 位雪花 ID 时精度丢失的问题
-     * - 手动调用 Long.parseLong(applyId) 转换为 Long 类型后调用 Service
+     * 修复说明：参数为 String 类型，直接传递给 Service
      *
      * @param applyId 积分申请记录ID（字符串形式，由雪花算法生成）
      * @return true-存在待处理申诉，false-不存在
@@ -326,14 +295,8 @@ public class AppealController {
             return Result.error(401, "请先登录");
         }
 
-        try {
-            Long applyIdLong = Long.parseLong(applyId);
-            boolean hasPending = appealRecordService.hasPendingAppeal(applyIdLong);
-            log.info("【检查待处理申诉】applyId={}, hasPending={}", applyId, hasPending);
-            return Result.success(hasPending);
-        } catch (NumberFormatException e) {
-            log.warn("【检查待处理申诉】applyId 格式错误: {}", applyId);
-            return Result.error(400, "积分记录ID格式错误");
-        }
+        boolean hasPending = appealRecordService.hasPendingAppeal(applyId);
+        log.info("【检查待处理申诉】applyId={}, hasPending={}", applyId, hasPending);
+        return Result.success(hasPending);
     }
 }

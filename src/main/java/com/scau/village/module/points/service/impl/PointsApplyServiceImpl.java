@@ -1,4 +1,3 @@
-// 文件路径: src/main/java/com/scau/village/module/points/service/impl/PointsApplyServiceImpl.java
 package com.scau.village.module.points.service.impl;
 
 import com.alibaba.fastjson.JSON;
@@ -101,14 +100,21 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             PointsRule rule = ruleMapper.selectById(apply.getRuleId());
             User user = userMapper.selectById(apply.getUserId());
 
-            user.setPoints(user.getPoints() + rule.getPoints());
+            // 更新积分（同时更新三个字段）
+            int changeAmount = rule.getPoints();
+            user.setPoints(user.getPoints() + changeAmount);
+            // total_earned_points 只增不减（只有加分时才累加）
+            if (changeAmount > 0) {
+                user.setTotalEarnedPoints(user.getTotalEarnedPoints() + changeAmount);
+            }
+            user.setAvailablePoints(user.getAvailablePoints() + changeAmount);
             userMapper.updateById(user);
 
             PointsFlow flow = new PointsFlow();
             flow.setUserId(user.getId());
             flow.setChangeAmount(rule.getPoints());
             flow.setSourceType("apply");
-            flow.setSourceId(apply.getId());
+            flow.setSourceId(apply.getId().toString());
             flow.setRemark("积分申报审核通过:" + rule.getRuleName());
             flow.setCreateTime(LocalDateTime.now());
             flowMapper.insert(flow);
@@ -130,7 +136,6 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         log.info("【评分提交】开始处理，batchId={}, userId={}, rules={}, images={}",
                 dto.getBatchId(), dto.getUserId(), dto.getRules(), dto.getImages());
 
-        // ========== 修复点1：将 String 类型的 batchId 转换为 Long ==========
         Long batchId;
         try {
             batchId = Long.parseLong(dto.getBatchId());
@@ -179,26 +184,31 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             log.info("【评分提交】扣分项照片数量：{}", images.size());
         }
 
-        // 计算总得分
+        // 计算总得分 和 正分总和（用于 total_earned_points）
         int totalScore = 0;
+        int positiveScoreSum = 0;
         List<ScoreDetail> detailList = new ArrayList<>();
         for (PointsRule rule : rules) {
             if (rule.getStatus() != 1) {
                 throw new BusinessException("规则[" + rule.getRuleName() + "]已禁用，不能使用");
             }
-            totalScore += rule.getPoints();
+            int rulePoints = rule.getPoints();
+            totalScore += rulePoints;
+            if (rulePoints > 0) {
+                positiveScoreSum += rulePoints;
+            }
             ScoreDetail detail = new ScoreDetail();
             detail.setRuleId(rule.getId());
             detail.setRuleName(rule.getRuleName());
-            detail.setScore(rule.getPoints());
+            detail.setScore(rulePoints);
             detailList.add(detail);
         }
 
         LocalDate inspectionDate = batch.getInspectionDate();
 
-        // ========== 修复点2：遍历规则，逐条写入 points_apply 和 points_flow ==========
+        // 遍历规则，逐条写入 points_apply 和 points_flow
         for (PointsRule rule : rules) {
-            // ----- 1. 写入 points_apply（修复：之前缺失！）-----
+            // ----- 1. 写入 points_apply -----
             PointsApply apply = new PointsApply();
             apply.setTenantId(tenantId);
             apply.setUserId(dto.getUserId());
@@ -214,10 +224,9 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             apply.setAuditorId(inspectorId);
             apply.setAuditRemark("管理员现场评分");
             apply.setAuditTime(LocalDateTime.now());
-            // ========== 修复点3：source_type 从 "admin" 改为 "admin_inspection" ==========
             apply.setSourceType("admin_inspection");
             apply.setInspectorId(inspectorId);
-            apply.setInspectionBatchId(batchId);  // 使用转换后的 Long
+            apply.setInspectionBatchId(batchId);
             apply.setInspectionDate(inspectionDate);
             apply.setHasEvidence(hasPenaltyRule ? 1 : 0);
             apply.setCreateTime(LocalDateTime.now());
@@ -231,13 +240,17 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             flow.setUserId(user.getId());
             flow.setChangeAmount(rule.getPoints());
             flow.setSourceType("admin_inspection");
-            // ========== 修复点4：source_id 指向 points_apply.id ==========
-            flow.setSourceId(apply.getId());
+            flow.setSourceId(apply.getId().toString());
             flow.setRemark("管理员现场评分：" + rule.getRuleName() + "，批次：" + batch.getBatchName());
             flow.setCreateTime(LocalDateTime.now());
+
+            flow.setBatchId(String.valueOf(batchId));
+            flow.setBatchName(batch.getBatchName());
+            flow.setApplyId(String.valueOf(apply.getId()));
+
             flowMapper.insert(flow);
-            log.info("【评分提交】✅ 写入 points_flow 成功，flowId={}, sourceId={}, changeAmount={}",
-                    flow.getId(), flow.getSourceId(), flow.getChangeAmount());
+            log.info("【评分提交】✅ 写入 points_flow 成功，flowId={}, sourceId={}, changeAmount={}, batchId={}, applyId={}",
+                    flow.getId(), flow.getSourceId(), flow.getChangeAmount(), flow.getBatchId(), flow.getApplyId());
 
             // ----- 3. 如果是扣分规则，保存证据并创建整改任务 -----
             if (rule.getPoints() < 0) {
@@ -249,12 +262,12 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
                     try {
                         ScoreEvidence evidence = new ScoreEvidence();
-                        evidence.setApplyId(apply.getId().longValue());
+                        evidence.setApplyId(String.valueOf(apply.getId()));
                         evidence.setPhotoUrls(photoUrls);
                         evidence.setPhotoCount(dto.getImages().size());
                         evidence.setLocation("");
-                        evidence.setInspectorId(inspectorId.longValue());
-                        evidence.setBatchId(batchId);
+                        evidence.setInspectorId(String.valueOf(inspectorId));
+                        evidence.setBatchId(String.valueOf(batchId));
                         evidence.setRuleVersion("1.0");
                         evidence.setRuleName(rule.getRuleName());
                         evidence.setUserName(user.getRealName());
@@ -278,17 +291,16 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
                 // 创建整改任务
                 try {
                     rectificationTaskService.createTask(
-                            apply.getId().longValue(),
+                            String.valueOf(apply.getId()),
                             dto.getUserId().longValue(),
-                            batchId,
+                            String.valueOf(batchId),
                             rule.getRuleName(),
                             "请按照要求进行整改，整改完成后拍照上传。",
                             LocalDateTime.now().plusDays(7),
                             dto.getImages() != null ? String.join(",", dto.getImages()) : null,
-                            inspectorId.longValue()
+                            String.valueOf(inspectorId)
                     );
-                    log.info("【整改任务】✅ 创建整改任务成功，applyId={}, taskId={}",
-                            apply.getId(), apply.getId());
+                    log.info("【整改任务】✅ 创建整改任务成功，applyId={}", apply.getId());
                 } catch (Exception e) {
                     log.error("【整改任务】❌ 创建整改任务失败，applyId={}, error={}",
                             apply.getId(), e.getMessage(), e);
@@ -296,20 +308,26 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             }
         }
 
-        // 7. 更新用户总积分
-        user.setPoints(user.getPoints() + totalScore);
+        // 7. 更新用户积分（同时更新三个字段）
+        int newPoints = user.getPoints() + totalScore;
+        user.setPoints(newPoints);
+        if (positiveScoreSum > 0) {
+            user.setTotalEarnedPoints(user.getTotalEarnedPoints() + positiveScoreSum);
+        }
+        user.setAvailablePoints(newPoints);
         userMapper.updateById(user);
-        log.info("【评分提交】用户积分更新，userId={}, 新增积分={}, 当前总积分={}",
-                user.getId(), totalScore, user.getPoints());
+        log.info("【评分提交】用户积分更新，userId={}, 新增积分={}, 正分总和={}, 当前总积分={}, 总获得积分={}, 可用积分={}",
+                user.getId(), totalScore, positiveScoreSum, user.getPoints(),
+                user.getTotalEarnedPoints(), user.getAvailablePoints());
 
-        // 8. 更新/插入户汇总表
+        // 8. 更新/插入户汇总表（修复：将 batchId 和 inspectorId 转为 String）
         String detailJson = JSON.toJSONString(detailList);
         inspectionHouseholdService.saveOrUpdateSummary(
-                batchId,
+                String.valueOf(batchId),
                 dto.getUserId(),
                 totalScore,
                 detailJson,
-                inspectorId,
+                String.valueOf(inspectorId),
                 dto.getDescription()
         );
         log.info("【评分提交】户汇总表更新完成，userId={}, totalScore={}", dto.getUserId(), totalScore);

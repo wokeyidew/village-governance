@@ -9,6 +9,10 @@ import java.io.Serializable;
  * 村民提交整改请求DTO
  * 用于村民提交整改后照片和说明
  *
+ * 修复说明（2026-08-30）：
+ * - taskId 保持 String 类型，前端传递雪花ID字符串，防止JS精度丢失
+ * - 添加校验注解 @NotBlank，确保必填字段非空
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -20,6 +24,7 @@ public class SubmitRectificationDto implements Serializable {
     /**
      * 整改任务ID（必填）
      * 前端传递雪花ID字符串，防止JS精度丢失
+     * 对应 rectification_task.id（VARCHAR(64)）
      */
     @NotBlank(message = "整改任务ID不能为空")
     private String taskId;
@@ -37,4 +42,5 @@ public class SubmitRectificationDto implements Serializable {
      * 村民可填写整改过程的文字说明
      */
     private String submitRemark;
+
 }

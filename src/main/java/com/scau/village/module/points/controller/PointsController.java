@@ -223,12 +223,17 @@ public class PointsController {
      * 查询积分记录的证据详情
      * 村民只能查看自己的积分记录证据；管理员可查看所有。
      *
-     * @param applyId 积分申请/评分记录ID（points_apply.id）
+     * 修复说明（2026-08-30）：
+     * - applyId 路径参数从 Long 改为 String，避免前端雪花ID精度丢失
+     * - 调用 applyService.getById(applyId) 直接使用 String
+     * - 调用 scoreEvidenceService.getByApplyId(applyId) 直接使用 String
+     *
+     * @param applyId 积分申请/评分记录ID（points_apply.id，雪花ID字符串）
      * @return 证据详情
      */
     @GetMapping("/evidence/{applyId}")
-    public Result<EvidenceVO> getEvidence(@PathVariable Long applyId) {
-        // 🔥 增加日志：记录入参
+    public Result<EvidenceVO> getEvidence(@PathVariable String applyId) {
+        // 增加日志：记录入参
         log.info("【证据查询】收到请求，applyId={}", applyId);
 
         UserContext ctx = UserContext.get();

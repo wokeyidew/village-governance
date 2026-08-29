@@ -16,6 +16,8 @@ import java.util.Map;
  * 对应表：activity_participation
  * 提供活动参与记录的增删改查及统计功能
  *
+ * 纯注解方式（无 XML），避免 SAXParseException
+ *
  * @author system
  * @since 2026-08-28
  */
@@ -42,11 +44,13 @@ public interface ActivityParticipationMapper extends BaseMapper<ActivityParticip
      * @param endTime   结束时间（不含）
      * @return 活动参与记录列表
      */
-    @Select("SELECT * FROM activity_participation " +
+    @Select("<script>" +
+            "SELECT * FROM activity_participation " +
             "WHERE user_id = #{userId} " +
-            "AND participate_time >= #{startTime} " +
-            "AND participate_time < #{endTime} " +
-            "ORDER BY participate_time DESC")
+            "AND participate_time &gt;= #{startTime} " +
+            "AND participate_time &lt; #{endTime} " +
+            "ORDER BY participate_time DESC" +
+            "</script>")
     List<ActivityParticipation> selectByUserIdAndDateRange(@Param("userId") Integer userId,
                                                            @Param("startTime") LocalDateTime startTime,
                                                            @Param("endTime") LocalDateTime endTime);
@@ -60,10 +64,12 @@ public interface ActivityParticipationMapper extends BaseMapper<ActivityParticip
      * @param endTime   结束时间（不含）
      * @return 参与次数
      */
-    @Select("SELECT COUNT(*) FROM activity_participation " +
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM activity_participation " +
             "WHERE user_id = #{userId} " +
-            "AND participate_time >= #{startTime} " +
-            "AND participate_time < #{endTime}")
+            "AND participate_time &gt;= #{startTime} " +
+            "AND participate_time &lt; #{endTime}" +
+            "</script>")
     Integer countByUserIdAndDateRange(@Param("userId") Integer userId,
                                       @Param("startTime") LocalDateTime startTime,
                                       @Param("endTime") LocalDateTime endTime);
@@ -76,10 +82,12 @@ public interface ActivityParticipationMapper extends BaseMapper<ActivityParticip
      * @param endTime   结束时间（不含）
      * @return 积分总和
      */
-    @Select("SELECT COALESCE(SUM(earned_points), 0) FROM activity_participation " +
+    @Select("<script>" +
+            "SELECT COALESCE(SUM(earned_points), 0) FROM activity_participation " +
             "WHERE user_id = #{userId} " +
-            "AND participate_time >= #{startTime} " +
-            "AND participate_time < #{endTime}")
+            "AND participate_time &gt;= #{startTime} " +
+            "AND participate_time &lt; #{endTime}" +
+            "</script>")
     Integer sumPointsByUserIdAndDateRange(@Param("userId") Integer userId,
                                           @Param("startTime") LocalDateTime startTime,
                                           @Param("endTime") LocalDateTime endTime);
@@ -118,10 +126,10 @@ public interface ActivityParticipationMapper extends BaseMapper<ActivityParticip
             "FROM activity_participation " +
             "WHERE tenant_id = #{tenantId} " +
             "<if test='startTime != null'>" +
-            "AND participate_time >= #{startTime} " +
+            "AND participate_time &gt;= #{startTime} " +
             "</if>" +
             "<if test='endTime != null'>" +
-            "AND participate_time < #{endTime} " +
+            "AND participate_time &lt; #{endTime} " +
             "</if>" +
             "GROUP BY activity_type " +
             "ORDER BY count DESC" +
@@ -155,10 +163,12 @@ public interface ActivityParticipationMapper extends BaseMapper<ActivityParticip
      * @param endTime    结束时间（不含）
      * @return 总参与次数
      */
-    @Select("SELECT COUNT(*) FROM activity_participation " +
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM activity_participation " +
             "WHERE tenant_id = #{tenantId} " +
-            "AND participate_time >= #{startTime} " +
-            "AND participate_time < #{endTime}")
+            "AND participate_time &gt;= #{startTime} " +
+            "AND participate_time &lt; #{endTime}" +
+            "</script>")
     Integer countTotalByDateRange(@Param("tenantId") Integer tenantId,
                                   @Param("startTime") LocalDateTime startTime,
                                   @Param("endTime") LocalDateTime endTime);
@@ -171,10 +181,12 @@ public interface ActivityParticipationMapper extends BaseMapper<ActivityParticip
      * @param endTime    结束时间（不含）
      * @return 总积分
      */
-    @Select("SELECT COALESCE(SUM(earned_points), 0) FROM activity_participation " +
+    @Select("<script>" +
+            "SELECT COALESCE(SUM(earned_points), 0) FROM activity_participation " +
             "WHERE tenant_id = #{tenantId} " +
-            "AND participate_time >= #{startTime} " +
-            "AND participate_time < #{endTime}")
+            "AND participate_time &gt;= #{startTime} " +
+            "AND participate_time &lt; #{endTime}" +
+            "</script>")
     Integer sumTotalPointsByDateRange(@Param("tenantId") Integer tenantId,
                                       @Param("startTime") LocalDateTime startTime,
                                       @Param("endTime") LocalDateTime endTime);
@@ -189,14 +201,16 @@ public interface ActivityParticipationMapper extends BaseMapper<ActivityParticip
      * @param limit      限制条数
      * @return 用户排名列表，每个 Map 包含 userId 和 count
      */
-    @Select("SELECT user_id as userId, COUNT(*) as count " +
+    @Select("<script>" +
+            "SELECT user_id as userId, COUNT(*) as count " +
             "FROM activity_participation " +
             "WHERE tenant_id = #{tenantId} " +
-            "AND participate_time >= #{startTime} " +
-            "AND participate_time < #{endTime} " +
+            "AND participate_time &gt;= #{startTime} " +
+            "AND participate_time &lt; #{endTime} " +
             "GROUP BY user_id " +
             "ORDER BY count DESC " +
-            "LIMIT #{limit}")
+            "LIMIT #{limit}" +
+            "</script>")
     List<Map<String, Object>> selectTopUsersByActivityCount(@Param("tenantId") Integer tenantId,
                                                             @Param("startTime") LocalDateTime startTime,
                                                             @Param("endTime") LocalDateTime endTime,

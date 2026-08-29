@@ -125,4 +125,14 @@ public class QuarterlySnapshot {
      */
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    // ==================== 非数据库字段（v2.0.9 新增） ====================
+
+    /**
+     * 用户姓名（非数据库字段，通过 user_id 关联 user 表查询获得）
+     * 用于季度榜单展示，避免前端额外调用用户信息接口
+     */
+    @TableField(exist = false)
+    private String userName;
+
 }

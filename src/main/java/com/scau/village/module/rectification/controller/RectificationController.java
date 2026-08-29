@@ -78,8 +78,8 @@ public class RectificationController {
      * 获取整改任务详情（村民端）
      * 
      * 修复说明：
-     * - 参数类型由 Long 改为 String，解决前端 JavaScript 传递 19 位雪花 ID 时精度丢失的问题
-     * - 手动调用 Long.parseLong(taskId) 转换为 Long 类型后调用 Service
+     * - 参数类型为 String，直接传递给 Service 层，由 Service 层处理字符串 ID 查询
+     * - 移除 Long.parseLong 转换，避免潜在的 NumberFormatException
      *
      * @param taskId 整改任务ID（字符串形式，由雪花算法生成）
      * @return 整改任务详情
@@ -96,16 +96,11 @@ public class RectificationController {
         Long userId = ctx.getUserId();
 
         try {
-            Long taskIdLong = Long.parseLong(taskId);
-            log.info("【整改详情-Controller】当前用户ID={}, 转换后taskId={}", userId, taskIdLong);
-
-            RectificationDetailVO detail = rectificationTaskService.getTaskDetail(taskIdLong, userId);
+            log.info("【整改详情-Controller】当前用户ID={}, taskId={}", userId, taskId);
+            RectificationDetailVO detail = rectificationTaskService.getTaskDetail(taskId, userId);
             log.info("【整改详情-Controller】查询成功，taskId={}, userName={}",
                     taskId, detail != null ? detail.getUserName() : "null");
             return Result.success(detail);
-        } catch (NumberFormatException e) {
-            log.error("【整改详情-Controller】taskId 格式错误: {}", taskId, e);
-            return Result.error(400, "任务ID格式错误");
         } catch (Exception e) {
             log.error("【整改详情-Controller】查询整改任务详情失败，taskId={}, userId={}, error={}",
                     taskId, userId, e.getMessage(), e);
@@ -117,8 +112,8 @@ public class RectificationController {
      * 村民提交整改
      * 
      * 修复说明：
-     * - SubmitRectificationDto 中的 taskId 已改为 String 类型
-     * - 手动调用 Long.parseLong() 转换为 Long 后调用 Service
+     * - SubmitRectificationDto 中的 taskId 为 String 类型，直接传递给 Service 层
+     * - 移除 Long.parseLong 转换
      *
      * @param dto 提交整改请求体
      * @return 操作结果
@@ -134,24 +129,16 @@ public class RectificationController {
         }
         Long userId = ctx.getUserId();
 
-        Long taskId;
-        try {
-            taskId = Long.parseLong(dto.getTaskId());
-        } catch (NumberFormatException e) {
-            log.warn("【提交整改】taskId 格式错误: {}", dto.getTaskId());
-            return Result.error(400, "任务ID格式错误");
-        }
-
-        log.info("【提交整改】用户ID={}, taskId={}, 整改说明={}", userId, taskId, dto.getSubmitRemark());
+        log.info("【提交整改】用户ID={}, taskId={}, 整改说明={}", userId, dto.getTaskId(), dto.getSubmitRemark());
 
         rectificationTaskService.submitRectification(
-                taskId,
+                dto.getTaskId(),
                 userId,
                 dto.getAfterPhotos(),
                 dto.getSubmitRemark()
         );
 
-        log.info("【提交整改】整改提交成功，taskId={}, userId={}", taskId, userId);
+        log.info("【提交整改】整改提交成功，taskId={}, userId={}", dto.getTaskId(), userId);
         return Result.success(null);
     }
 
@@ -200,8 +187,8 @@ public class RectificationController {
      * 管理员获取整改任务详情
      * 
      * 修复说明：
-     * - 参数类型由 Long 改为 String，解决前端 JavaScript 传递 19 位雪花 ID 时精度丢失的问题
-     * - 手动调用 Long.parseLong(taskId) 转换为 Long 类型后调用 Service
+     * - 参数类型为 String，直接传递给 Service 层，由 Service 层处理字符串 ID 查询
+     * - 移除 Long.parseLong 转换
      *
      * @param taskId 整改任务ID（字符串形式，由雪花算法生成）
      * @return 整改任务详情
@@ -213,16 +200,11 @@ public class RectificationController {
         SecurityUtils.checkRole("VILLAGE_ADMIN", "GRID_MEMBER");
 
         try {
-            Long taskIdLong = Long.parseLong(taskId);
-            log.info("【整改详情-Controller】转换后taskId={}", taskIdLong);
-
-            RectificationDetailVO detail = rectificationTaskService.getAdminTaskDetail(taskIdLong);
+            log.info("【整改详情-Controller】管理员端查询，taskId={}", taskId);
+            RectificationDetailVO detail = rectificationTaskService.getAdminTaskDetail(taskId);
             log.info("【整改详情-Controller】管理员端查询成功，taskId={}, userName={}",
                     taskId, detail != null ? detail.getUserName() : "null");
             return Result.success(detail);
-        } catch (NumberFormatException e) {
-            log.error("【整改详情-Controller】taskId 格式错误: {}", taskId, e);
-            return Result.error(400, "任务ID格式错误");
         } catch (Exception e) {
             log.error("【整改详情-Controller】管理员端查询整改任务详情失败，taskId={}, error={}",
                     taskId, e.getMessage(), e);
@@ -234,8 +216,8 @@ public class RectificationController {
      * 管理员复核整改任务
      * 
      * 修复说明：
-     * - ReviewRectificationDto 中的 taskId 已改为 String 类型
-     * - 手动调用 Long.parseLong() 转换为 Long 后调用 Service
+     * - ReviewRectificationDto 中的 taskId 为 String 类型，直接传递给 Service 层
+     * - 移除 Long.parseLong 转换
      *
      * @param dto 复核请求体
      * @return 操作结果
@@ -252,25 +234,17 @@ public class RectificationController {
         }
         Long reviewerId = ctx.getUserId();
 
-        Long taskId;
-        try {
-            taskId = Long.parseLong(dto.getTaskId());
-        } catch (NumberFormatException e) {
-            log.warn("【复核整改】taskId 格式错误: {}", dto.getTaskId());
-            return Result.error(400, "任务ID格式错误");
-        }
-
         log.info("【复核整改】复核人ID={}, taskId={}, result={}, remark={}",
-                reviewerId, taskId, dto.getReviewResult(), dto.getReviewRemark());
+                reviewerId, dto.getTaskId(), dto.getReviewResult(), dto.getReviewRemark());
 
         rectificationTaskService.reviewTask(
-                taskId,
+                dto.getTaskId(),
                 reviewerId,
                 dto.getReviewResult(),
                 dto.getReviewRemark()
         );
 
-        log.info("【复核整改】复核完成，taskId={}, reviewerId={}", taskId, reviewerId);
+        log.info("【复核整改】复核完成，taskId={}, reviewerId={}", dto.getTaskId(), reviewerId);
         return Result.success(null);
     }
 
@@ -278,8 +252,8 @@ public class RectificationController {
      * 管理员根据批次ID获取整改任务列表
      * 
      * 修复说明：
-     * - 参数类型由 Long 改为 String，解决前端 JavaScript 传递 19 位雪花 ID 时精度丢失的问题
-     * - 手动调用 Long.parseLong(batchId) 转换为 Long 类型后调用 Service
+     * - 参数类型为 String，直接传递给 Service 层
+     * - 移除 Long.parseLong 转换
      *
      * @param batchId 批次ID（字符串形式，由雪花算法生成）
      * @param status  任务状态（可选）
@@ -293,23 +267,17 @@ public class RectificationController {
 
         SecurityUtils.checkRole("VILLAGE_ADMIN", "GRID_MEMBER");
 
-        try {
-            Long batchIdLong = Long.parseLong(batchId);
-            List<RectificationTask> tasks = rectificationTaskService.getTasksByBatchId(batchIdLong, status);
-            log.info("【批次任务列表】查询成功，批次ID={}, 任务数={}", batchId, tasks != null ? tasks.size() : 0);
-            return Result.success(tasks);
-        } catch (NumberFormatException e) {
-            log.warn("【批次任务列表】batchId 格式错误: {}", batchId);
-            return Result.error(400, "批次ID格式错误");
-        }
+        List<RectificationTask> tasks = rectificationTaskService.getTasksByBatchId(batchId, status);
+        log.info("【批次任务列表】查询成功，批次ID={}, 任务数={}", batchId, tasks != null ? tasks.size() : 0);
+        return Result.success(tasks);
     }
 
     /**
      * 管理员统计某个批次的整改完成率
      * 
      * 修复说明：
-     * - 参数类型由 Long 改为 String，解决前端 JavaScript 传递 19 位雪花 ID 时精度丢失的问题
-     * - 手动调用 Long.parseLong(batchId) 转换为 Long 类型后调用 Service
+     * - 参数类型为 String，直接传递给 Service 层
+     * - 移除 Long.parseLong 转换
      *
      * @param batchId 批次ID（字符串形式，由雪花算法生成）
      * @return 完成率（0-100之间的整数）
@@ -320,14 +288,8 @@ public class RectificationController {
 
         SecurityUtils.checkRole("VILLAGE_ADMIN", "GRID_MEMBER");
 
-        try {
-            Long batchIdLong = Long.parseLong(batchId);
-            Integer rate = rectificationTaskService.calculateCompletionRate(batchIdLong);
-            log.info("【完成率统计】批次ID={}, 完成率={}%", batchId, rate);
-            return Result.success(rate);
-        } catch (NumberFormatException e) {
-            log.warn("【完成率统计】batchId 格式错误: {}", batchId);
-            return Result.error(400, "批次ID格式错误");
-        }
+        Integer rate = rectificationTaskService.calculateCompletionRate(batchId);
+        log.info("【完成率统计】批次ID={}, 完成率={}%", batchId, rate);
+        return Result.success(rate);
     }
 }

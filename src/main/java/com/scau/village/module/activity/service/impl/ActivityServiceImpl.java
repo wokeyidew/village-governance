@@ -25,7 +25,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.DigestUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -231,24 +230,33 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
                 if (user == null) {
                     throw new BusinessException("用户不存在");
                 }
-                user.setPoints(user.getPoints() + activity.getRewardPoints());
+                // ================================================================
+                // 【修复点】同步更新三个积分字段（v2.0 双轨制）
+                // ================================================================
+                int rewardPoints = activity.getRewardPoints();
+                user.setPoints(user.getPoints() + rewardPoints);
+                user.setTotalEarnedPoints(user.getTotalEarnedPoints() + rewardPoints);
+                user.setAvailablePoints(user.getAvailablePoints() + rewardPoints);
                 userMapper.updateById(user);
 
                 PointsFlow flow = new PointsFlow();
                 flow.setUserId(user.getId());
-                flow.setChangeAmount(activity.getRewardPoints());
+                flow.setChangeAmount(rewardPoints);
                 flow.setSourceType("activity");
-                flow.setSourceId(activity.getId());
+                // ================================================================
+                // 【修复点】sourceId 转为 String
+                // ================================================================
+                flow.setSourceId(activity.getId().toString());
                 flow.setRemark(String.format("活动签退奖励：%s（参与%d分钟）", activity.getTitle(), minutes));
                 flow.setCreateTime(now);
                 pointsFlowMapper.insert(flow);
 
                 operationLogService.log(userId.longValue(), "ACTIVITY_CHECKOUT",
                         String.format("扫码签退成功，活动ID=%d, 用户ID=%d, 奖励积分=%d, 参与时长=%d分钟",
-                                activityId, userId, activity.getRewardPoints(), minutes));
+                                activityId, userId, rewardPoints, minutes));
                 log.info("扫码签退成功，activityId={}, userId={}, 积分+{}, 时长={}分钟",
-                        activityId, userId, activity.getRewardPoints(), minutes);
-                return "签退成功！奖励积分：" + activity.getRewardPoints() + "，参与时长：" + minutes + "分钟";
+                        activityId, userId, rewardPoints, minutes);
+                return "签退成功！奖励积分：" + rewardPoints + "，参与时长：" + minutes + "分钟";
             } else {
                 operationLogService.log(userId.longValue(), "ACTIVITY_CHECKOUT",
                         String.format("扫码签退成功，活动ID=%d, 用户ID=%d, 无积分奖励", activityId, userId));

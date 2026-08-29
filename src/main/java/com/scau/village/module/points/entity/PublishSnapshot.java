@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
  * 用于存储每月/每批次发布的红黑榜快照数据
  * 发布后数据冻结，不受后续评分修改影响
  *
+ * 包含字段：id, batchId, month, snapshotData, redList, blackList,
+ * publishTime, publishBy, publishByName, tenantId, createTime, updateTime, deleted
+ * 以及内部类 SnapshotItem
+ *
  * @author system
  * @since 2026-08-19
  */

@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,8 @@ import java.util.Map;
  * 重要贡献认定 Mapper 接口
  * 对应表：important_contribution
  * 提供重要贡献的增删改查及统计功能
+ *
+ * 纯注解方式（无 XML），避免 SAXParseException
  *
  * @author system
  * @since 2026-08-28
@@ -85,12 +88,12 @@ public interface ImportantContributionMapper extends BaseMapper<ImportantContrib
             "WHERE id = #{id}")
     int approve(@Param("id") Long id,
                 @Param("approvedBy") Integer approvedBy,
-                @Param("approvedTime") java.time.LocalDateTime approvedTime);
+                @Param("approvedTime") LocalDateTime approvedTime);
 
     /**
      * 更新认定为驳回
      *
-     * @param id    记录ID
+     * @param id     记录ID
      * @param remark 驳回原因（可选）
      * @return 更新行数
      */
@@ -147,22 +150,25 @@ public interface ImportantContributionMapper extends BaseMapper<ImportantContrib
     /**
      * 查询指定季度内的重要贡献记录
      * 用于季度结算时统计季度重要贡献积分
+     * 修复：使用 &gt;= 和 &lt; 转义 >= 和 <，避免 SAXParseException
      *
-     * @param tenantId    租户ID
-     * @param userId      用户ID
-     * @param startTime   季度开始时间
-     * @param endTime     季度结束时间
+     * @param tenantId  租户ID
+     * @param userId    用户ID
+     * @param startTime 季度开始时间
+     * @param endTime   季度结束时间
      * @return 重要贡献记录列表
      */
-    @Select("SELECT * FROM important_contribution " +
+    @Select("<script>" +
+            "SELECT * FROM important_contribution " +
             "WHERE tenant_id = #{tenantId} " +
             "AND user_id = #{userId} " +
             "AND status = 'approved' " +
-            "AND create_time >= #{startTime} " +
-            "AND create_time < #{endTime}")
+            "AND create_time &gt;= #{startTime} " +
+            "AND create_time &lt; #{endTime}" +
+            "</script>")
     List<ImportantContribution> selectByUserAndDateRange(@Param("tenantId") Integer tenantId,
                                                          @Param("userId") Integer userId,
-                                                         @Param("startTime") java.time.LocalDateTime startTime,
-                                                         @Param("endTime") java.time.LocalDateTime endTime);
+                                                         @Param("startTime") LocalDateTime startTime,
+                                                         @Param("endTime") LocalDateTime endTime);
 
 }

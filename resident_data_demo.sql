@@ -1,12 +1,99 @@
 -- ======================================================
 -- 龙胜惠民通 · 演示数据脚本（iCAN比赛专用）
--- 说明：虚拟村民数据，仅用于比赛演示，非真实数据
+-- 版本：v2.0.9 升级补丁（兼容 MySQL 5.7）
+-- 说明：修复 points_flow / user / points_rule 表缺失字段
+--       并插入 30 户居民档案演示数据
 -- 执行：mysql -u root -p village_demo_db < resident_data_demo.sql
 -- ======================================================
 
 USE village_demo_db;
 
--- 清空已有居民档案数据
+-- ======================================================
+-- 【v2.0.9 数据库结构升级补丁】2026-08-30
+-- 兼容 MySQL 5.7（不使用 ADD COLUMN IF NOT EXISTS）
+-- 使用存储过程 + INFORMATION_SCHEMA 判断字段是否存在
+-- ======================================================
+
+-- 1. 修复 points_flow 表（缺失 batch_id, batch_name, apply_id）
+DROP PROCEDURE IF EXISTS upgrade_points_flow;
+DELIMITER $$
+CREATE PROCEDURE upgrade_points_flow()
+BEGIN
+    IF NOT EXISTS (SELECT * FROM information_schema.COLUMNS 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'points_flow' 
+                   AND COLUMN_NAME = 'batch_id') THEN
+        ALTER TABLE points_flow ADD COLUMN `batch_id` VARCHAR(64) NULL COMMENT '关联检查批次ID（雪花ID）' AFTER `tenant_id`;
+    END IF;
+    
+    IF NOT EXISTS (SELECT * FROM information_schema.COLUMNS 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'points_flow' 
+                   AND COLUMN_NAME = 'batch_name') THEN
+        ALTER TABLE points_flow ADD COLUMN `batch_name` VARCHAR(100) NULL COMMENT '关联检查批次名称' AFTER `batch_id`;
+    END IF;
+    
+    IF NOT EXISTS (SELECT * FROM information_schema.COLUMNS 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'points_flow' 
+                   AND COLUMN_NAME = 'apply_id') THEN
+        ALTER TABLE points_flow ADD COLUMN `apply_id` VARCHAR(64) NULL COMMENT '关联积分申请/评分记录ID（雪花ID）' AFTER `batch_name`;
+    END IF;
+END$$
+DELIMITER ;
+CALL upgrade_points_flow();
+DROP PROCEDURE upgrade_points_flow;
+
+-- 2. 修复 user 表（v2.0 双轨制积分字段）
+DROP PROCEDURE IF EXISTS upgrade_user;
+DELIMITER $$
+CREATE PROCEDURE upgrade_user()
+BEGIN
+    IF NOT EXISTS (SELECT * FROM information_schema.COLUMNS 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'user' 
+                   AND COLUMN_NAME = 'total_earned_points') THEN
+        ALTER TABLE `user` ADD COLUMN `total_earned_points` INT DEFAULT 0 COMMENT '总获得积分（只增不减）' AFTER `resident_profile_id`;
+    END IF;
+    
+    IF NOT EXISTS (SELECT * FROM information_schema.COLUMNS 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'user' 
+                   AND COLUMN_NAME = 'available_points') THEN
+        ALTER TABLE `user` ADD COLUMN `available_points` INT DEFAULT 0 COMMENT '当前可用积分（兑换时扣减）' AFTER `total_earned_points`;
+    END IF;
+END$$
+DELIMITER ;
+CALL upgrade_user();
+DROP PROCEDURE upgrade_user;
+
+-- 3. 修复 points_rule 表（v2.0 行为类型与月度上限）
+DROP PROCEDURE IF EXISTS upgrade_points_rule;
+DELIMITER $$
+CREATE PROCEDURE upgrade_points_rule()
+BEGIN
+    IF NOT EXISTS (SELECT * FROM information_schema.COLUMNS 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'points_rule' 
+                   AND COLUMN_NAME = 'behavior_type') THEN
+        ALTER TABLE `points_rule` ADD COLUMN `behavior_type` VARCHAR(20) DEFAULT 'daily' COMMENT 'daily/important/activity' AFTER `sort_order`;
+    END IF;
+    
+    IF NOT EXISTS (SELECT * FROM information_schema.COLUMNS 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'points_rule' 
+                   AND COLUMN_NAME = 'max_times_per_month') THEN
+        ALTER TABLE `points_rule` ADD COLUMN `max_times_per_month` INT DEFAULT 0 COMMENT '每月上限（0=不限）' AFTER `behavior_type`;
+    END IF;
+END$$
+DELIMITER ;
+CALL upgrade_points_rule();
+DROP PROCEDURE upgrade_points_rule;
+
+-- ======================================================
+-- 清空已有居民档案数据（仅清空 resident_profile 表）
+-- ======================================================
+
 TRUNCATE TABLE resident_profile;
 
 -- ======================================================

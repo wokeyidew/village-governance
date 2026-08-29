@@ -15,6 +15,11 @@ import java.time.LocalDateTime;
 /**
  * 检查户汇总服务实现类
  *
+ * 修复说明（2026-08-30）：
+ * - batchId 从 Long 改为 String，对应实体类字段类型
+ * - inspectorId 从 Integer 改为 String，对应实体类字段类型
+ * - 适配 selectByBatchIdAndUserId 方法的参数变化（需同步修改 Mapper 接口）
+ *
  * @author system
  * @since 2026-07-16
  */
@@ -26,8 +31,8 @@ public class InspectionHouseholdServiceImpl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public InspectionHousehold saveOrUpdateSummary(Long batchId, Integer userId, Integer totalScore,
-                                                   String detailJson, Integer inspectorId, String remark) {
+    public InspectionHousehold saveOrUpdateSummary(String batchId, Integer userId, Integer totalScore,
+                                                   String detailJson, String inspectorId, String remark) {
         // 获取租户ID，若为空则使用默认值 1
         Integer tenantId = UserContext.getCurrentTenantId();
         if (tenantId == null) {
@@ -35,11 +40,10 @@ public class InspectionHouseholdServiceImpl
             log.warn("UserContext 中 tenantId 为空，使用默认值: 1");
         }
 
-        // 转换 userId 和 inspectorId 为 Long（适配实体字段类型）
+        // 转换 userId 为 Long（实体类 userId 为 Long）
         Long userIdLong = userId != null ? userId.longValue() : null;
-        Long inspectorIdLong = inspectorId != null ? inspectorId.longValue() : null;
 
-        // 查询是否已存在汇总记录
+        // 查询是否已存在汇总记录（Mapper 方法参数适应：batchId String, userId Integer）
         InspectionHousehold existing = null;
         try {
             existing = baseMapper.selectByBatchIdAndUserId(batchId, userId);
@@ -57,7 +61,7 @@ public class InspectionHouseholdServiceImpl
             if (remark != null) {
                 existing.setRemark(remark);
             }
-            existing.setInspectorId(inspectorIdLong);
+            existing.setInspectorId(inspectorId);
             existing.setUpdateTime(LocalDateTime.now());
             updateById(existing);
             log.debug("更新汇总记录成功，batchId={}, userId={}, totalScore={}", batchId, userId, totalScore);
@@ -69,7 +73,7 @@ public class InspectionHouseholdServiceImpl
             household.setUserId(userIdLong);
             household.setTotalScore(totalScore);
             household.setDetailJson(detailJson);
-            household.setInspectorId(inspectorIdLong);
+            household.setInspectorId(inspectorId);
             household.setRemark(remark);
             // 确保 tenantId 不为 null，数据库表 tenant_id 为 NOT NULL
             household.setTenantId(tenantId.longValue());
@@ -94,7 +98,7 @@ public class InspectionHouseholdServiceImpl
                     if (remark != null) {
                         existing.setRemark(remark);
                     }
-                    existing.setInspectorId(inspectorIdLong);
+                    existing.setInspectorId(inspectorId);
                     existing.setUpdateTime(LocalDateTime.now());
                     updateById(existing);
                     log.debug("冲突后更新汇总记录成功，batchId={}, userId={}", batchId, userId);

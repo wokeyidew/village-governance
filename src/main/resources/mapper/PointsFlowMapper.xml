@@ -11,13 +11,12 @@
         <result column="source_id" property="sourceId"/>
         <result column="remark" property="remark"/>
         <result column="create_time" property="createTime"/>
-        <!-- 关联批次信息 -->
-        <result column="batch_id" property="batchId"/>
-        <result column="batch_name" property="batchName"/>
         <!-- 来自 points_apply 表的字段 -->
         <result column="images" property="images"/>
         <result column="description" property="description"/>
-        <!-- ====== 新增：applyId 映射（2026-08-27） ====== -->
+        <!-- ====== v2.0：直接从 points_flow 表获取三个字段 ====== -->
+        <result column="batch_id" property="batchId"/>
+        <result column="batch_name" property="batchName"/>
         <result column="apply_id" property="applyId"/>
     </resultMap>
 
@@ -31,16 +30,14 @@
             pf.source_id,
             pf.remark,
             pf.create_time,
+            pf.batch_id,
+            pf.batch_name,
+            pf.apply_id,
             pa.images,
-            pa.description,
-            pa.inspection_batch_id AS batch_id,
-            ib.batch_name,
-            <!-- ====== 新增：关联 points_apply.id 作为 apply_id ====== -->
-            pa.id AS apply_id
+            pa.description
         FROM points_flow pf
         LEFT JOIN points_apply pa ON pf.source_id = pa.id
             AND pf.source_type IN ('admin_inspection', 'apply')
-        LEFT JOIN inspection_batch ib ON pa.inspection_batch_id = ib.id
         WHERE pf.user_id = #{userId}
         ORDER BY pf.create_time DESC
     </select>

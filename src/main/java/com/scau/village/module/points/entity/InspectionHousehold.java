@@ -12,6 +12,10 @@ import java.time.LocalDateTime;
  * 对应表名：inspection_household
  * 用于记录每户每次检查的总得分，便于按户维度导出
  *
+ * 修复说明（2026-08-30）：
+ * - id、batchId、inspectorId 改为 String 类型（雪花ID），避免前端精度丢失
+ * - userId 和 tenantId 保持 Long（自增ID或租户ID，不是雪花ID）
+ *
  * @author system
  * @since 2026-07-16
  */
@@ -23,18 +27,18 @@ public class InspectionHousehold implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 主键ID
+     * 主键ID（雪花ID字符串）
      */
     @TableId(value = "id", type = IdType.ASSIGN_ID)
-    private Long id;
+    private String id;
 
     /**
-     * 关联的检查批次ID（inspection_batch.id）
+     * 关联的检查批次ID（inspection_batch.id，雪花ID字符串）
      */
-    private Long batchId;
+    private String batchId;
 
     /**
-     * 户主用户ID（关联user表）
+     * 户主用户ID（关联user表，自增ID）
      */
     private Long userId;
 
@@ -51,9 +55,9 @@ public class InspectionHousehold implements Serializable {
     private String detailJson;
 
     /**
-     * 检查员ID（管理员）
+     * 检查员ID（管理员ID，雪花ID字符串）
      */
-    private Long inspectorId;
+    private String inspectorId;
 
     /**
      * 检查备注
@@ -85,19 +89,19 @@ public class InspectionHousehold implements Serializable {
 
     // ==================== 手动 getter/setter（确保 Lombok 未生效时编译通过） ====================
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public Long getBatchId() {
+    public String getBatchId() {
         return batchId;
     }
 
-    public void setBatchId(Long batchId) {
+    public void setBatchId(String batchId) {
         this.batchId = batchId;
     }
 
@@ -125,11 +129,11 @@ public class InspectionHousehold implements Serializable {
         this.detailJson = detailJson;
     }
 
-    public Long getInspectorId() {
+    public String getInspectorId() {
         return inspectorId;
     }
 
-    public void setInspectorId(Long inspectorId) {
+    public void setInspectorId(String inspectorId) {
         this.inspectorId = inspectorId;
     }
 

@@ -59,10 +59,9 @@ public class PolicyController {
 
         SecurityUtils.checkRole("VILLAGE_ADMIN");
 
-        // 确保 tenantId 不为空
         Integer tenantId = ctx.getTenantId();
         if (tenantId == null) {
-            tenantId = 1; // 默认租户
+            tenantId = 1;
             log.warn("当前用户 tenantId 为空，使用默认值 1");
         }
         policy.setTenantId(tenantId);
@@ -101,7 +100,6 @@ public class PolicyController {
         if (policy == null) {
             return Result.error(404, "政策不存在");
         }
-        // 逻辑删除（@TableLogic 自动处理）
         policyService.removeById(id);
         log.info("政策已删除，id={}, adminId={}", id, ctx.getUserId());
         return Result.success(null);

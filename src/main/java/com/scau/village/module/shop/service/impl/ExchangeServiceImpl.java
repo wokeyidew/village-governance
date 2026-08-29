@@ -65,11 +65,27 @@ public class ExchangeServiceImpl implements ExchangeService {
             if (user == null) {
                 throw new BusinessException("用户不存在");
             }
-            if (user.getPoints() < product.getPointsNeeded()) {
-                throw new BusinessException("积分不足");
+
+            // ================================================================
+            // 【修复点 1】积分校验：使用 availablePoints（可用积分）
+            // 注意：不是 points（旧字段），更不是 totalEarnedPoints
+            // ================================================================
+            if (user.getAvailablePoints() == null) {
+                user.setAvailablePoints(0);
+            }
+            if (user.getAvailablePoints() < product.getPointsNeeded()) {
+                throw new BusinessException("可用积分不足，当前可用：" + user.getAvailablePoints() + "，需要：" + product.getPointsNeeded());
             }
 
-            user.setPoints(user.getPoints() - product.getPointsNeeded());
+            // ================================================================
+            // 【修复点 2】积分扣减：同时更新 availablePoints 和 points（兼容）
+            // 注意：totalEarnedPoints 保持不变（只增不减）
+            // ================================================================
+            int pointsNeeded = product.getPointsNeeded();
+            user.setAvailablePoints(user.getAvailablePoints() - pointsNeeded);
+            user.setPoints(user.getPoints() - pointsNeeded);  // 兼容旧字段
+            // 注意：不修改 totalEarnedPoints
+
             int updateUserResult = userMapper.updateById(user);
             if (updateUserResult == 0) {
                 log.warn("更新用户积分失败，userId={}, 重试次数={}", userId, retryCount);
@@ -97,22 +113,29 @@ public class ExchangeServiceImpl implements ExchangeService {
                 record.setCreateTime(LocalDateTime.now());
                 recordMapper.insert(record);
 
+                // ================================================================
+                // 【修复点 3】记录积分流水：sourceId 转为 String
+                // 注意：PointsFlow.sourceId 已改为 String 类型
+                // ================================================================
                 PointsFlow flow = new PointsFlow();
                 flow.setUserId(userId.intValue());
-                flow.setChangeAmount(-product.getPointsNeeded());
+                flow.setChangeAmount(-pointsNeeded);
                 flow.setSourceType("exchange");
-                flow.setSourceId(record.getId());
-                flow.setRemark("兑换商品:" + product.getName());
+                flow.setSourceId(record.getId().toString());  // ✅ 转为 String
+                flow.setRemark("兑换商品：" + product.getName());
                 flow.setCreateTime(LocalDateTime.now());
+                flow.setTenantId(tenantId);
+                // batchId, batchName, applyId 保持 null（不适用于兑换场景）
                 pointsFlowMapper.insert(flow);
 
                 operationLogService.log(userId, "POINTS_EXCHANGE",
                         String.format("兑换商品 %s (ID:%d)，消耗积分 %d，核销码 %s",
-                                product.getName(), productId, product.getPointsNeeded(), exchangeCode));
+                                product.getName(), productId, pointsNeeded, exchangeCode));
 
                 sendNotifications(user, product, exchangeCode, tenantId);
 
-                log.info("兑换成功，userId={}, productId={}, code={}", userId, productId, exchangeCode);
+                log.info("兑换成功，userId={}, productId={}, code={}, 可用积分剩余={}",
+                        userId, productId, exchangeCode, user.getAvailablePoints());
                 return record;
             } else if (retryCount == MAX_RETRY - 1) {
                 log.error("兑换失败，乐观锁冲突超过最大重试次数，userId={}, productId={}", userId, productId);
@@ -127,6 +150,10 @@ public class ExchangeServiceImpl implements ExchangeService {
         }
         throw new BusinessException("兑换失败，请稍后重试");
     }
+
+    // ================================================================
+    // 【以下方法保持不变】
+    // ================================================================
 
     private void sendNotifications(User user, Product product, String code, Integer tenantId) {
         try {

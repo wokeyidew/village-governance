@@ -11,6 +11,10 @@ import java.io.Serializable;
  * 当 AI 服务不可用时，后端会返回降级模式数据（isDemo = true），
  * 前端可根据该字段展示“AI演示”标识，避免用户误以为真实AI服务已生效
  *
+ * 字段说明（v2.0.6）：
+ * - ruleText: 匹配到的规则名称（CLIP模型返回的规则描述文本）
+ * - 前端应使用 ruleText 字段，而非 ruleName（已废弃）
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -33,8 +37,9 @@ public class AiMatchVO implements Serializable {
 
     /**
      * 匹配到的规则名称（CLIP模型返回的规则描述文本）
+     * 前端应使用此字段展示匹配结果
      */
-    private String ruleName;
+    private String ruleText;
 
     /**
      * 匹配置信度（0-1之间的浮点数）
