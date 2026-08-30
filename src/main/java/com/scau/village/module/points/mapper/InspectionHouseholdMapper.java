@@ -26,6 +26,6 @@ public interface InspectionHouseholdMapper extends BaseMapper<InspectionHousehol
      * @return 汇总记录，不存在则返回 null
      */
     @Select("SELECT * FROM inspection_household WHERE batch_id = #{batchId} AND user_id = #{userId} AND deleted = 0")
-    InspectionHousehold selectByBatchIdAndUserId(@Param("batchId") String batchId, 
+    InspectionHousehold selectByBatchIdAndUserId(@Param("batchId") String batchId,
                                                   @Param("userId") Integer userId);
 }

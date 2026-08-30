@@ -16,7 +16,6 @@ import com.scau.village.module.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +26,14 @@ import java.util.stream.Collectors;
 
 /**
  * 红黑榜公示快照服务实现类
+ *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 参数类型从 Long 改为 String，与接口保持一致
+ * - 包括：batchId、snapshotId、userId
+ * - 内部调用 Mapper 时直接使用 String，无需转换（数据库字段为 varchar）
+ * - SnapshotItem.userId 改为 String 类型
+ * - publishBy 改为 String 类型
+ * - RankChange.userId 改为 String 类型
  *
  * @author system
  * @since 2026-08-19
@@ -47,12 +54,12 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
     // ==================== 生成与发布方法 ====================
 
     @Override
-    public SnapshotVO generateSnapshot(Long batchId, Integer tenantId) {
+    public SnapshotVO generateSnapshot(String batchId, Integer tenantId) {
         if (batchId == null || tenantId == null) {
             throw new BusinessException("批次ID和租户ID不能为空");
         }
 
-        // 1. 获取该批次下的所有户汇总记录
+        // 1. 获取该批次下的所有户汇总记录（batchId 为 String）
         LambdaQueryWrapper<InspectionHousehold> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(InspectionHousehold::getBatchId, batchId)
                 .eq(InspectionHousehold::getTenantId, tenantId.longValue())
@@ -82,7 +89,10 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
             String userName = user != null ? user.getRealName() : "未知";
 
             PublishSnapshot.SnapshotItem item = new PublishSnapshot.SnapshotItem();
-            item.setUserId(h.getUserId());
+            // ================================================================
+            // 【修复】将 Long 转换为 String
+            // ================================================================
+            item.setUserId(String.valueOf(h.getUserId()));
             item.setUserName(userName);
             item.setTotalScore(h.getTotalScore());
             item.setRank(i + 1);
@@ -98,12 +108,12 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
             items.add(item);
         }
 
-        // 4. 构建红榜和黑榜ID列表
-        List<Long> redIds = items.stream()
+        // 4. 构建红榜和黑榜ID列表（String 类型）
+        List<String> redIds = items.stream()
                 .filter(item -> "red".equals(item.getTag()))
                 .map(PublishSnapshot.SnapshotItem::getUserId)
                 .collect(Collectors.toList());
-        List<Long> blackIds = items.stream()
+        List<String> blackIds = items.stream()
                 .filter(item -> "black".equals(item.getTag()))
                 .map(PublishSnapshot.SnapshotItem::getUserId)
                 .collect(Collectors.toList());
@@ -125,7 +135,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
 
     @Override
     @Transactional
-    public PublishSnapshot publishSnapshot(Long batchId, Integer tenantId, Long publisherId, String publisherName) {
+    public PublishSnapshot publishSnapshot(String batchId, Integer tenantId, Long publisherId, String publisherName) {
         // 1. 检查是否已发布
         if (isPublished(batchId)) {
             throw new BusinessException("该批次已发布榜单，请勿重复发布");
@@ -145,7 +155,10 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
         snapshot.setRedList(JSON.toJSONString(snapshotVO.getRedList()));
         snapshot.setBlackList(JSON.toJSONString(snapshotVO.getBlackList()));
         snapshot.setPublishTime(LocalDateTime.now());
-        snapshot.setPublishBy(publisherId);
+        // ================================================================
+        // 【修复】将 Long 转换为 String
+        // ================================================================
+        snapshot.setPublishBy(String.valueOf(publisherId));
         snapshot.setPublishByName(publisherName);
         snapshot.setTenantId(tenantId);
         snapshot.setCreateTime(LocalDateTime.now());
@@ -160,7 +173,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
     // ==================== 查询方法 ====================
 
     @Override
-    public PublishSnapshot getByBatchId(Long batchId) {
+    public PublishSnapshot getByBatchId(String batchId) {
         if (batchId == null) {
             return null;
         }
@@ -168,7 +181,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
     }
 
     @Override
-    public SnapshotVO getSnapshotByBatchId(Long batchId) {
+    public SnapshotVO getSnapshotByBatchId(String batchId) {
         PublishSnapshot snapshot = getByBatchId(batchId);
         if (snapshot == null) {
             return null;
@@ -226,25 +239,21 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
         PublishSnapshot current = currentList.get(0);
         PublishSnapshot previous = previousList.get(0);
 
-        // 2. 解析红黑榜ID列表
-        List<Long> currentRed = JSON.parseArray(current.getRedList(), Long.class);
-        List<Long> currentBlack = JSON.parseArray(current.getBlackList(), Long.class);
-        List<Long> previousRed = JSON.parseArray(previous.getRedList(), Long.class);
-        List<Long> previousBlack = JSON.parseArray(previous.getBlackList(), Long.class);
+        // 2. 解析红黑榜ID列表（JSON存的是String）
+        List<String> currentRed = JSON.parseArray(current.getRedList(), String.class);
+        List<String> currentBlack = JSON.parseArray(current.getBlackList(), String.class);
+        List<String> previousRed = JSON.parseArray(previous.getRedList(), String.class);
+        List<String> previousBlack = JSON.parseArray(previous.getBlackList(), String.class);
 
         // 3. 计算变化
-        // 红榜新增：当前红榜 - 上月红榜
-        List<Long> redAdded = new ArrayList<>(currentRed);
+        List<String> redAdded = new ArrayList<>(currentRed);
         redAdded.removeAll(previousRed);
-        // 红榜退出：上月红榜 - 当前红榜
-        List<Long> redExited = new ArrayList<>(previousRed);
+        List<String> redExited = new ArrayList<>(previousRed);
         redExited.removeAll(currentRed);
 
-        // 黑榜新增：当前黑榜 - 上月黑榜
-        List<Long> blackAdded = new ArrayList<>(currentBlack);
+        List<String> blackAdded = new ArrayList<>(currentBlack);
         blackAdded.removeAll(previousBlack);
-        // 黑榜退出：上月黑榜 - 当前黑榜
-        List<Long> blackExited = new ArrayList<>(previousBlack);
+        List<String> blackExited = new ArrayList<>(previousBlack);
         blackExited.removeAll(currentBlack);
 
         // 4. 统计用户排名变化
@@ -252,19 +261,25 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
         List<PublishSnapshot.SnapshotItem> currentItems = JSON.parseArray(current.getSnapshotData(), PublishSnapshot.SnapshotItem.class);
         List<PublishSnapshot.SnapshotItem> previousItems = JSON.parseArray(previous.getSnapshotData(), PublishSnapshot.SnapshotItem.class);
 
-        Map<Long, Integer> previousRankMap = previousItems.stream()
+        // ================================================================
+        // 【修复】使用 String 作为 Map 的 key
+        // ================================================================
+        Map<String, Integer> previousRankMap = previousItems.stream()
                 .collect(Collectors.toMap(PublishSnapshot.SnapshotItem::getUserId, PublishSnapshot.SnapshotItem::getRank));
-        Map<Long, Integer> currentRankMap = currentItems.stream()
+        Map<String, Integer> currentRankMap = currentItems.stream()
                 .collect(Collectors.toMap(PublishSnapshot.SnapshotItem::getUserId, PublishSnapshot.SnapshotItem::getRank));
 
-        Set<Long> allUsers = new HashSet<>(previousRankMap.keySet());
+        Set<String> allUsers = new HashSet<>(previousRankMap.keySet());
         allUsers.addAll(currentRankMap.keySet());
 
-        for (Long userId : allUsers) {
+        for (String userId : allUsers) {
             Integer prevRank = previousRankMap.get(userId);
             Integer currRank = currentRankMap.get(userId);
             if (prevRank != null && currRank != null) {
                 CompareVO.RankChange change = new CompareVO.RankChange();
+                // ================================================================
+                // 【修复】userId 为 String
+                // ================================================================
                 change.setUserId(userId);
                 String userName = previousItems.stream()
                         .filter(item -> item.getUserId().equals(userId))
@@ -324,7 +339,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
     }
 
     @Override
-    public CompareVO.RankChange getUserRankChange(Long userId, String startMonth, String endMonth, Integer tenantId) {
+    public CompareVO.RankChange getUserRankChange(String userId, String startMonth, String endMonth, Integer tenantId) {
         if (userId == null || StringUtils.isBlank(startMonth) || StringUtils.isBlank(endMonth) || tenantId == null) {
             throw new BusinessException("参数不完整");
         }
@@ -342,6 +357,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
         List<PublishSnapshot.SnapshotItem> startItems = JSON.parseArray(startSnapshot.getSnapshotData(), PublishSnapshot.SnapshotItem.class);
         List<PublishSnapshot.SnapshotItem> endItems = JSON.parseArray(endSnapshot.getSnapshotData(), PublishSnapshot.SnapshotItem.class);
 
+        // userId 已经是 String，直接使用
         PublishSnapshot.SnapshotItem startItem = startItems.stream()
                 .filter(item -> item.getUserId().equals(userId))
                 .findFirst().orElse(null);
@@ -350,6 +366,9 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
                 .findFirst().orElse(null);
 
         CompareVO.RankChange change = new CompareVO.RankChange();
+        // ================================================================
+        // 【修复】userId 为 String
+        // ================================================================
         change.setUserId(userId);
         if (startItem != null) {
             change.setPreviousRank(startItem.getRank());
@@ -380,7 +399,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
 
     @Override
     @Transactional
-    public boolean deleteByBatchId(Long batchId) {
+    public boolean deleteByBatchId(String batchId) {
         if (batchId == null) {
             return false;
         }
@@ -394,7 +413,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
 
     @Override
     @Transactional
-    public boolean forceDeleteByBatchId(Long batchId) {
+    public boolean forceDeleteByBatchId(String batchId) {
         if (batchId == null) {
             return false;
         }
@@ -404,7 +423,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
     // ==================== 统计方法 ====================
 
     @Override
-    public boolean isPublished(Long batchId) {
+    public boolean isPublished(String batchId) {
         if (batchId == null) {
             return false;
         }
@@ -413,7 +432,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
     }
 
     @Override
-    public Integer getRedCount(Long snapshotId) {
+    public Integer getRedCount(String snapshotId) {
         if (snapshotId == null) {
             return 0;
         }
@@ -421,12 +440,12 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
         if (snapshot == null) {
             return 0;
         }
-        List<Long> redList = JSON.parseArray(snapshot.getRedList(), Long.class);
+        List<String> redList = JSON.parseArray(snapshot.getRedList(), String.class);
         return redList != null ? redList.size() : 0;
     }
 
     @Override
-    public Integer getBlackCount(Long snapshotId) {
+    public Integer getBlackCount(String snapshotId) {
         if (snapshotId == null) {
             return 0;
         }
@@ -434,7 +453,7 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
         if (snapshot == null) {
             return 0;
         }
-        List<Long> blackList = JSON.parseArray(snapshot.getBlackList(), Long.class);
+        List<String> blackList = JSON.parseArray(snapshot.getBlackList(), String.class);
         return blackList != null ? blackList.size() : 0;
     }
 
@@ -466,8 +485,8 @@ public class PublishSnapshotServiceImpl extends ServiceImpl<PublishSnapshotMappe
         vo.setItems(items);
         vo.setTotalItems(items != null ? items.size() : 0);
 
-        List<Long> redList = JSON.parseArray(snapshot.getRedList(), Long.class);
-        List<Long> blackList = JSON.parseArray(snapshot.getBlackList(), Long.class);
+        List<String> redList = JSON.parseArray(snapshot.getRedList(), String.class);
+        List<String> blackList = JSON.parseArray(snapshot.getBlackList(), String.class);
         vo.setRedList(redList);
         vo.setBlackList(blackList);
         vo.setRedCount(redList != null ? redList.size() : 0);

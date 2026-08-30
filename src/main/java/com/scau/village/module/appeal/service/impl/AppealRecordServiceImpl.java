@@ -1,6 +1,7 @@
 package com.scau.village.module.appeal.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.scau.village.common.context.UserContext;
@@ -41,6 +42,7 @@ import java.util.List;
  * - 修复 pointChange 判断逻辑，撤销评分时正确恢复积分
  * - 修复 recordPointsFlow 中 sourceId 类型转换（Integer → String）
  * - pointsApplyMapper.selectById 时使用 Long.parseLong 转换
+ * - 【核心修复】submitAppeal 方法中显式生成雪花 ID 并设置到 record.id
  *
  * @author system
  * @since 2026-08-19
@@ -151,6 +153,7 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
     /**
      * 提交申诉
      * 修复：applyId 参数类型从 Long 改为 String
+     * 【核心修复】显式生成雪花 ID 并设置到 record.id
      */
     @Override
     @Transactional
@@ -194,6 +197,11 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
 
         // 6. 创建申诉记录（实体字段为 String）
         AppealRecord record = new AppealRecord();
+        // ================================================================
+        // 【核心修复】显式生成雪花 ID（String 类型）
+        // 使用 MyBatis-Plus 的 IdWorker 生成 19 位雪花 ID
+        // ================================================================
+        record.setId(IdWorker.getIdStr());  // ← 关键：生成 String 类型的雪花 ID
         record.setApplyId(applyId);
         record.setUserId(String.valueOf(userId));
         record.setUserName(user.getRealName());

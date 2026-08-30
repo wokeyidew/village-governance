@@ -48,6 +48,10 @@ import java.util.Map;
  * 提供检查批次管理、评分提交、历史记录查询、Excel导出、红黑榜发布与查询、AI辅助匹配、离线同步等功能
  * 路径前缀：/api/inspection
  *
+ * 修复说明（2026-08-30）：
+ * - publishSnapshot 和 getSnapshotByBatchId 的 @PathVariable 参数从 Long 改为 String，解决雪花ID精度丢失
+ * - 内部调用直接传递 String，保持与 Service 层签名一致
+ *
  * @author system
  * @since 2026-07-16
  */
@@ -162,9 +166,11 @@ public class InspectionController {
     /**
      * 8. 发布红黑榜快照
      * 根据批次ID生成快照并保存到数据库，发布后数据冻结
+     * 
+     * 修复说明：batchId 改为 String 类型
      */
     @PostMapping("/publish-snapshot/{batchId}")
-    public Result<PublishSnapshot> publishSnapshot(@PathVariable Long batchId) {
+    public Result<PublishSnapshot> publishSnapshot(@PathVariable String batchId) {
         Integer tenantId = UserContext.getCurrentTenantId();
         Long publisherId = UserContext.getCurrentUserId();
         if (publisherId == null) {
@@ -179,9 +185,11 @@ public class InspectionController {
 
     /**
      * 9. 获取指定批次的红黑榜快照（已发布）
+     * 
+     * 修复说明：batchId 改为 String 类型
      */
     @GetMapping("/snapshot/{batchId}")
-    public Result<SnapshotVO> getSnapshotByBatchId(@PathVariable Long batchId) {
+    public Result<SnapshotVO> getSnapshotByBatchId(@PathVariable String batchId) {
         SnapshotVO snapshot = publishSnapshotService.getSnapshotByBatchId(batchId);
         if (snapshot == null) {
             return Result.error(404, "该批次尚未发布榜单或不存在");

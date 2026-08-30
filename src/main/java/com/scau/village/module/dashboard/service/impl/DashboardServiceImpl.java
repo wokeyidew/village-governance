@@ -47,25 +47,20 @@ public class DashboardServiceImpl implements DashboardService {
             return new ArrayList<>();
         }
 
-        // 获取最近6个月的月份列表（从当前月开始往前推6个月）
         List<String> months = getLastSixMonths();
-
         List<TrendVO> trendList = new ArrayList<>();
+
         for (String month : months) {
             TrendVO vo = new TrendVO();
             vo.setMonth(month);
 
-            // 统计该月扣分项（规则 points < 0）
-            // 关联 points_apply 和 points_rule，筛选 tenant_id，按月份过滤
-            // 直接用 SQL 聚合，这里使用 MyBatis-Plus 条件构造
             LambdaQueryWrapper<PointsApply> applyWrapper = new LambdaQueryWrapper<>();
             applyWrapper.eq(PointsApply::getTenantId, tenantId)
-                    .eq(PointsApply::getSourceType, "admin")  // 只统计管理员评分
+                    .eq(PointsApply::getSourceType, "admin_inspection")
                     .apply("DATE_FORMAT(create_time, '%Y-%m') = {0}", month);
 
             List<PointsApply> applies = pointsApplyMapper.selectList(applyWrapper);
             if (applies.isEmpty()) {
-                // 无数据时填0
                 vo.setTotalProblems(0);
                 vo.setResolvedProblems(0);
                 vo.setCompletionRate(0.0);
@@ -77,7 +72,6 @@ public class DashboardServiceImpl implements DashboardService {
                 continue;
             }
 
-            // 统计问题总数（扣分项）
             int totalProblems = 0;
             int totalPenalty = 0;
             int totalBonus = 0;
@@ -95,14 +89,11 @@ public class DashboardServiceImpl implements DashboardService {
                 userIds.add(apply.getUserId());
             }
 
-            // 统计已整改问题数（该月扣分项对应的整改任务已销项）
-            // 实际上需要关联 rectification_task 表，根据 apply_id
             int resolvedProblems = 0;
             for (PointsApply apply : applies) {
                 if (apply.getRuleId() != null) {
                     PointsRule rule = pointsRuleMapper.selectById(apply.getRuleId());
                     if (rule != null && rule.getPoints() < 0) {
-                        // 查询是否存在已销项的整改任务
                         LambdaQueryWrapper<RectificationTask> taskWrapper = new LambdaQueryWrapper<>();
                         taskWrapper.eq(RectificationTask::getApplyId, apply.getId().longValue())
                                 .eq(RectificationTask::getStatus, RectificationTask.STATUS_RESOLVED);
@@ -114,7 +105,6 @@ public class DashboardServiceImpl implements DashboardService {
                 }
             }
 
-            // 参与户数（该月有积分记录的不同用户数）
             int participantCount = userIds.size();
 
             vo.setTotalProblems(totalProblems);
@@ -139,7 +129,6 @@ public class DashboardServiceImpl implements DashboardService {
             return new ArrayList<>();
         }
 
-        // 获取所有村民用户（按 village_group 分组）
         LambdaQueryWrapper<User> userWrapper = new LambdaQueryWrapper<>();
         userWrapper.eq(User::getTenantId, tenantId)
                 .eq(User::getRole, "VILLAGER")
@@ -151,7 +140,6 @@ public class DashboardServiceImpl implements DashboardService {
             return new ArrayList<>();
         }
 
-        // 按村组分组
         Map<String, List<User>> groupMap = users.stream()
                 .collect(Collectors.groupingBy(User::getVillageGroup));
 
@@ -164,27 +152,20 @@ public class DashboardServiceImpl implements DashboardService {
             vo.setVillageGroup(groupName);
             vo.setParticipantCount(groupUsers.size());
 
-            // 计算该组所有用户的积分总和
             int totalScore = 0;
             int minScore = Integer.MAX_VALUE;
             int maxScore = Integer.MIN_VALUE;
-            int problemCount = 0;
-            int resolvedCount = 0;
 
             for (User user : groupUsers) {
                 totalScore += user.getPoints();
                 if (user.getPoints() < minScore) minScore = user.getPoints();
                 if (user.getPoints() > maxScore) maxScore = user.getPoints();
-
-                // 统计扣分项（可优化，这里简单处理）
-                // 实际上需要查 points_apply，但为了性能，暂不深入
             }
 
             double avg = groupUsers.isEmpty() ? 0.0 : (double) totalScore / groupUsers.size();
             vo.setAverageScore(avg);
             vo.setMaxScore(maxScore == Integer.MIN_VALUE ? 0 : maxScore);
             vo.setMinScore(minScore == Integer.MAX_VALUE ? 0 : minScore);
-            // 简化处理：问题数、已整改数暂时无法精确统计，设为0或取近似
             vo.setProblemCount(0);
             vo.setResolvedCount(0);
             vo.setCompletionRate(0.0);
@@ -192,7 +173,6 @@ public class DashboardServiceImpl implements DashboardService {
             result.add(vo);
         }
 
-        // 按平均分降序排序，并设置排名
         result.sort((a, b) -> Double.compare(b.getAverageScore(), a.getAverageScore()));
         for (int i = 0; i < result.size(); i++) {
             result.get(i).setRank(i + 1);
@@ -209,7 +189,6 @@ public class DashboardServiceImpl implements DashboardService {
             return new ArrayList<>();
         }
 
-        // 查询所有扣分规则（points < 0）
         LambdaQueryWrapper<PointsRule> ruleWrapper = new LambdaQueryWrapper<>();
         ruleWrapper.eq(PointsRule::getTenantId, tenantId)
                 .lt(PointsRule::getPoints, 0)
@@ -220,21 +199,19 @@ public class DashboardServiceImpl implements DashboardService {
             return new ArrayList<>();
         }
 
-        // 统计每条规则被使用的次数（从 points_apply 中统计）
         List<ProblemTypeVO> voList = new ArrayList<>();
         for (PointsRule rule : penaltyRules) {
             LambdaQueryWrapper<PointsApply> applyWrapper = new LambdaQueryWrapper<>();
             applyWrapper.eq(PointsApply::getTenantId, tenantId)
                     .eq(PointsApply::getRuleId, rule.getId())
-                    .eq(PointsApply::getSourceType, "admin");  // 只统计管理员评分
+                    .eq(PointsApply::getSourceType, "admin_inspection");
 
             Long count = pointsApplyMapper.selectCount(applyWrapper);
             if (count > 0) {
-                // 查询涉及的用户数
                 LambdaQueryWrapper<PointsApply> userWrapper = new LambdaQueryWrapper<>();
                 userWrapper.eq(PointsApply::getTenantId, tenantId)
                         .eq(PointsApply::getRuleId, rule.getId())
-                        .eq(PointsApply::getSourceType, "admin")
+                        .eq(PointsApply::getSourceType, "admin_inspection")
                         .select(PointsApply::getUserId);
                 List<PointsApply> applies = pointsApplyMapper.selectList(userWrapper);
                 Set<Integer> userIds = applies.stream().map(PointsApply::getUserId).collect(Collectors.toSet());
@@ -251,11 +228,9 @@ public class DashboardServiceImpl implements DashboardService {
             }
         }
 
-        // 按扣分次数降序排序，取Top5
         voList.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
         List<ProblemTypeVO> top5 = voList.stream().limit(5).collect(Collectors.toList());
 
-        // 计算总扣分次数
         int totalCount = voList.stream().mapToInt(ProblemTypeVO::getCount).sum();
         for (ProblemTypeVO vo : top5) {
             if (totalCount > 0) {
@@ -263,7 +238,6 @@ public class DashboardServiceImpl implements DashboardService {
             } else {
                 vo.setPercentage(0.0);
             }
-            // 设置排名
             int idx = top5.indexOf(vo);
             vo.setRank(idx + 1);
         }
@@ -323,7 +297,6 @@ public class DashboardServiceImpl implements DashboardService {
                 .eq(User::getRole, "VILLAGER");
         Long totalHouseholds = userMapper.selectCount(userWrapper);
 
-        // 有积分记录的用户（points_apply 中存在的用户）
         LambdaQueryWrapper<PointsApply> applyWrapper = new LambdaQueryWrapper<>();
         applyWrapper.eq(PointsApply::getTenantId, tenantId)
                 .select(PointsApply::getUserId);
@@ -334,23 +307,22 @@ public class DashboardServiceImpl implements DashboardService {
         vo.setTotalHouseholds(totalHouseholds.intValue());
         vo.setParticipantCount(participantCount);
         vo.setParticipationRate(totalHouseholds == 0 ? 0.0 : (double) participantCount / totalHouseholds * 100);
-
-        // 参与率变化（与上月对比）-- 简化，暂设为0
         vo.setParticipationRateChange(0.0);
         vo.setNewParticipants(0);
-        vo.setActiveUsers(participantCount);  // 近似
+        vo.setActiveUsers(participantCount);
 
-        // 3. 红黑榜指标（取最新快照与上个月对比）
+        // 3. 红黑榜指标
         try {
-            // 获取最新快照（返回 SnapshotVO）
             SnapshotVO latestSnapshot = publishSnapshotService.getLatestSnapshot(tenantId);
             if (latestSnapshot != null) {
                 vo.setCurrentRedCount(latestSnapshot.getRedCount() != null ? latestSnapshot.getRedCount() : 0);
                 vo.setCurrentBlackCount(latestSnapshot.getBlackCount() != null ? latestSnapshot.getBlackCount() : 0);
+                // ================================================================
+                // 【修复】直接使用 List<String>，无需转换
+                // ================================================================
                 vo.setCurrentRedList(latestSnapshot.getRedList());
                 vo.setCurrentBlackList(latestSnapshot.getBlackList());
 
-                // 获取上个月快照
                 String month = latestSnapshot.getMonth();
                 String prevMonth = getPreviousMonth(month);
                 if (prevMonth != null) {
@@ -395,7 +367,6 @@ public class DashboardServiceImpl implements DashboardService {
             vo.setPreviousBlackList(new ArrayList<>());
         }
 
-        // 计算增长率
         if (vo.getPreviousRedCount() > 0) {
             vo.setRedListGrowthRate((double) (vo.getCurrentRedCount() - vo.getPreviousRedCount()) / vo.getPreviousRedCount() * 100);
         } else {
@@ -407,7 +378,7 @@ public class DashboardServiceImpl implements DashboardService {
             vo.setBlackListReductionRate(vo.getCurrentBlackCount() == 0 ? 100.0 : 0.0);
         }
 
-        // 4. 综合评分和等级（简化）
+        // 4. 综合评分和等级
         double score = 0;
         if (vo.getRectificationCompletionRate() != null) score += vo.getRectificationCompletionRate() * 0.4;
         if (vo.getParticipationRate() != null) score += vo.getParticipationRate() * 0.3;
@@ -420,7 +391,6 @@ public class DashboardServiceImpl implements DashboardService {
         else if (vo.getOverallScore() >= 40) vo.setGrade("一般");
         else vo.setGrade("待提升");
 
-        // 总结语
         if (vo.getOverallScore() >= 80) {
             vo.setSummary("治理效果显著，继续保持！");
         } else if (vo.getOverallScore() >= 60) {
@@ -436,9 +406,6 @@ public class DashboardServiceImpl implements DashboardService {
 
     // ==================== 辅助方法 ====================
 
-    /**
-     * 获取最近6个月的月份列表（从当前月往前推6个月）
-     */
     private List<String> getLastSixMonths() {
         List<String> months = new ArrayList<>();
         LocalDate now = LocalDate.now();
@@ -449,9 +416,6 @@ public class DashboardServiceImpl implements DashboardService {
         return months;
     }
 
-    /**
-     * 获取上个月的月份字符串（yyyy-MM）
-     */
     private String getPreviousMonth(String month) {
         try {
             LocalDate date = LocalDate.parse(month + "-01");

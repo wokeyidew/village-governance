@@ -10,6 +10,10 @@ import java.util.List;
  * 用于展示治理效果的关键指标
  * 包括：整改完成率、参与率、红榜增长率等核心效果数据
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 列表字段类型从 List<Long> 改为 List<String>，与实体类保持一致
+ * - 包括：currentRedList, currentBlackList, previousRedList, previousBlackList
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -121,24 +125,24 @@ public class EffectivenessVO implements Serializable {
     private Integer previousBlackCount;
 
     /**
-     * 当前月份红榜户ID列表
+     * 当前月份红榜户ID列表（雪花ID字符串列表）
      */
-    private List<Long> currentRedList;
+    private List<String> currentRedList;
 
     /**
-     * 当前月份黑榜户ID列表
+     * 当前月份黑榜户ID列表（雪花ID字符串列表）
      */
-    private List<Long> currentBlackList;
+    private List<String> currentBlackList;
 
     /**
-     * 上个月份红榜户ID列表
+     * 上个月份红榜户ID列表（雪花ID字符串列表）
      */
-    private List<Long> previousRedList;
+    private List<String> previousRedList;
 
     /**
-     * 上个月份黑榜户ID列表
+     * 上个月份黑榜户ID列表（雪花ID字符串列表）
      */
-    private List<Long> previousBlackList;
+    private List<String> previousBlackList;
 
     // ==================== 综合效果指标 ====================
 

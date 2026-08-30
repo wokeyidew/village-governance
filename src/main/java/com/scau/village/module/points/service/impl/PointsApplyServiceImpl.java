@@ -322,7 +322,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
         // 8. 更新/插入户汇总表（修复：将 batchId 和 inspectorId 转为 String）
         String detailJson = JSON.toJSONString(detailList);
-        inspectionHouseholdService.saveOrUpdateSummary(
+        // 调用 service 保存汇总，增加日志记录结果
+        InspectionHousehold household = inspectionHouseholdService.saveOrUpdateSummary(
                 String.valueOf(batchId),
                 dto.getUserId(),
                 totalScore,
@@ -330,7 +331,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
                 String.valueOf(inspectorId),
                 dto.getDescription()
         );
-        log.info("【评分提交】户汇总表更新完成，userId={}, totalScore={}", dto.getUserId(), totalScore);
+        log.info("【评分提交】户汇总表更新完成，userId={}, totalScore={}, householdId={}",
+                dto.getUserId(), totalScore, household != null ? household.getId() : "null");
 
         // 9. 记录操作日志
         operationLogService.log(inspectorId.longValue(), "INSPECTION_SCORE",

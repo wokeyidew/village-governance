@@ -1,8 +1,6 @@
 package com.scau.village.module.points.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -17,6 +15,11 @@ import java.time.LocalDateTime;
  * publishTime, publishBy, publishByName, tenantId, createTime, updateTime, deleted
  * 以及内部类 SnapshotItem
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 字段类型从 Long 改为 String，避免前端 JavaScript 精度丢失
+ * - 移除 @JsonSerialize(using = ToStringSerializer.class) 注解（String 类型无需序列化处理）
+ * - 包括：id, batchId, publishBy, SnapshotItem.userId
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -26,18 +29,16 @@ public class PublishSnapshot {
 
     /**
      * 主键ID（雪花算法）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失（Long 超出 JS Number 安全范围）
+     * 数据库类型：VARCHAR(64)
      */
     @TableId(type = IdType.ASSIGN_ID)
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long id;
+    private String id;
 
     /**
      * 关联检查批次ID（inspection_batch.id）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long batchId;
+    private String batchId;
 
     /**
      * 月份标识，格式：yyyy-MM
@@ -50,21 +51,21 @@ public class PublishSnapshot {
      * 包含所有户的排名、分数、标签等信息
      * 格式示例：
      * [
-     *   {"userId":1, "userName":"邓金超", "totalScore":95, "rank":1, "tag":"red"},
-     *   {"userId":2, "userName":"李四", "totalScore":45, "rank":85, "tag":"black"}
+     *   {"userId":"1", "userName":"邓金超", "totalScore":95, "rank":1, "tag":"red"},
+     *   {"userId":"2", "userName":"李四", "totalScore":45, "rank":85, "tag":"black"}
      * ]
      */
     private String snapshotData;
 
     /**
      * 红榜户ID列表（JSON格式）
-     * 示例：[1, 3, 5, 7]
+     * 示例：["1", "3", "5", "7"]
      */
     private String redList;
 
     /**
      * 黑榜户ID列表（JSON格式）
-     * 示例：[2, 4, 6, 8]
+     * 示例：["2", "4", "6", "8"]
      */
     private String blackList;
 
@@ -75,10 +76,9 @@ public class PublishSnapshot {
 
     /**
      * 发布人ID（管理员）
-     * 序列化为字符串，避免前端 JavaScript 精度丢失
+     * 数据库类型：VARCHAR(64)
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long publishBy;
+    private String publishBy;
 
     /**
      * 发布人姓名（冗余存储）
@@ -116,11 +116,9 @@ public class PublishSnapshot {
     @Data
     public static class SnapshotItem {
         /**
-         * 用户ID
-         * 序列化为字符串，避免前端 JavaScript 精度丢失
+         * 用户ID（雪花ID字符串）
          */
-        @JsonSerialize(using = ToStringSerializer.class)
-        private Long userId;
+        private String userId;
 
         private String userName;
         private Integer totalScore;

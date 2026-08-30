@@ -23,50 +23,49 @@
         <result property="createTime" column="createTime"/>
     </resultMap>
 
-    <!-- 分页查询检查记录 -->
+    <!-- 分页查询检查记录（从汇总表 inspection_household 查询） -->
     <select id="selectInspectionRecords" resultMap="InspectionRecordVOMap">
         SELECT
-            a.id AS recordId,
-            a.inspection_batch_id AS batchId,
+            h.id AS recordId,
+            h.batch_id AS batchId,
             b.batch_name AS batchName,
-            a.user_id AS userId,
+            h.user_id AS userId,
             u.real_name AS userName,
             u.phone AS userPhone,
-            a.rule_id AS ruleId,
-            r.rule_name AS ruleName,
-            r.points AS ruleScore,
-            a.source_type AS sourceType,
-            a.inspector_id AS inspectorId,
-            u2.real_name AS inspectorName,
-            a.inspection_date AS inspectionDate,
-            a.description,
-            a.images,
-            a.status,
-            a.create_time AS createTime
-        FROM points_apply a
-        LEFT JOIN `user` u ON a.user_id = u.id
-        LEFT JOIN points_rule r ON a.rule_id = r.id
-        LEFT JOIN `user` u2 ON a.inspector_id = u2.id
-        LEFT JOIN inspection_batch b ON a.inspection_batch_id = b.id
+            NULL AS ruleId,
+            NULL AS ruleName,
+            h.total_score AS ruleScore,
+            'admin_inspection' AS sourceType,
+            h.inspector_id AS inspectorId,
+            i.real_name AS inspectorName,
+            b.inspection_date AS inspectionDate,
+            h.remark AS description,
+            NULL AS images,
+            'approved' AS status,
+            h.create_time AS createTime
+        FROM inspection_household h
+        LEFT JOIN `user` u ON h.user_id = u.id
+        LEFT JOIN `user` i ON h.inspector_id = i.id
+        LEFT JOIN inspection_batch b ON h.batch_id = b.id
         <where>
-            a.source_type = 'admin'
-            <if test="query.batchId != null">
-                AND a.inspection_batch_id = #{query.batchId}
+            h.deleted = 0
+            <if test="query.batchId != null and query.batchId != ''">
+                AND h.batch_id = #{query.batchId}
             </if>
             <if test="query.userId != null">
-                AND a.user_id = #{query.userId}
+                AND h.user_id = #{query.userId}
             </if>
             <if test="query.startDate != null">
-                AND a.inspection_date >= #{query.startDate}
+                AND h.create_time >= #{query.startDate}
             </if>
             <if test="query.endDate != null">
-                AND a.inspection_date &lt;= #{query.endDate}
+                AND h.create_time &lt;= #{query.endDate}
             </if>
         </where>
-        ORDER BY a.create_time DESC
+        ORDER BY h.create_time DESC
     </select>
 
-    <!-- 导出数据（明细） -->
+    <!-- 导出数据（明细）从 points_apply 表查询 -->
     <select id="selectExportData" resultType="com.scau.village.module.points.vo.ExportDataVO">
         SELECT
             b.batch_name AS batchName,
@@ -83,7 +82,7 @@
         LEFT JOIN `user` u2 ON a.inspector_id = u2.id
         LEFT JOIN inspection_batch b ON a.inspection_batch_id = b.id
         <where>
-            a.source_type = 'admin'
+            a.source_type = 'admin_inspection'
             <if test="query.batchId != null">
                 AND a.inspection_batch_id = #{query.batchId}
             </if>

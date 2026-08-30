@@ -2,6 +2,7 @@
 -- 龙胜惠民通 · 演示数据脚本（iCAN比赛专用）
 -- 版本：v2.0.9 升级补丁（兼容 MySQL 5.7）
 -- 说明：修复 points_flow / user / points_rule 表缺失字段
+--       并将所有雪花 ID 字段从 bigint 改为 varchar(64)
 --       并插入 30 户居民档案演示数据
 -- 执行：mysql -u root -p village_demo_db < resident_data_demo.sql
 -- ======================================================
@@ -89,6 +90,120 @@ END$$
 DELIMITER ;
 CALL upgrade_points_rule();
 DROP PROCEDURE upgrade_points_rule;
+
+-- ======================================================
+-- 【v2.0.9 额外修复】将所有雪花 ID 字段从 bigint 改为 varchar(64)
+-- 涉及表：appeal_record, inspection_household, points_flow (source_id)
+-- ======================================================
+
+-- 4. 修改 appeal_record 表
+DROP PROCEDURE IF EXISTS upgrade_appeal_record_id;
+DELIMITER $$
+CREATE PROCEDURE upgrade_appeal_record_id()
+BEGIN
+    -- 检查 id 字段类型，若为 bigint 则修改
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'appeal_record' 
+               AND COLUMN_NAME = 'id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE appeal_record 
+            MODIFY COLUMN id VARCHAR(64) NOT NULL COMMENT '主键ID（雪花ID）';
+    END IF;
+    
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'appeal_record' 
+               AND COLUMN_NAME = 'apply_id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE appeal_record 
+            MODIFY COLUMN apply_id VARCHAR(64) COMMENT '关联积分记录ID';
+    END IF;
+    
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'appeal_record' 
+               AND COLUMN_NAME = 'user_id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE appeal_record 
+            MODIFY COLUMN user_id VARCHAR(64) COMMENT '申诉人用户ID';
+    END IF;
+    
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'appeal_record' 
+               AND COLUMN_NAME = 'reviewer_id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE appeal_record 
+            MODIFY COLUMN reviewer_id VARCHAR(64) COMMENT '复核人ID';
+    END IF;
+    
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'appeal_record' 
+               AND COLUMN_NAME = 'batch_id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE appeal_record 
+            MODIFY COLUMN batch_id VARCHAR(64) COMMENT '关联检查批次ID';
+    END IF;
+END$$
+DELIMITER ;
+CALL upgrade_appeal_record_id();
+DROP PROCEDURE upgrade_appeal_record_id;
+
+-- 5. 修改 inspection_household 表
+DROP PROCEDURE IF EXISTS upgrade_inspection_household_id;
+DELIMITER $$
+CREATE PROCEDURE upgrade_inspection_household_id()
+BEGIN
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'inspection_household' 
+               AND COLUMN_NAME = 'id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE inspection_household 
+            MODIFY COLUMN id VARCHAR(64) NOT NULL COMMENT '主键ID（雪花ID）';
+    END IF;
+    
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'inspection_household' 
+               AND COLUMN_NAME = 'batch_id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE inspection_household 
+            MODIFY COLUMN batch_id VARCHAR(64) COMMENT '关联检查批次ID';
+    END IF;
+    
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'inspection_household' 
+               AND COLUMN_NAME = 'inspector_id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE inspection_household 
+            MODIFY COLUMN inspector_id VARCHAR(64) COMMENT '检查人ID';
+    END IF;
+END$$
+DELIMITER ;
+CALL upgrade_inspection_household_id();
+DROP PROCEDURE upgrade_inspection_household_id;
+
+-- 6. 修改 points_flow 表（source_id 字段）
+DROP PROCEDURE IF EXISTS upgrade_points_flow_source_id;
+DELIMITER $$
+CREATE PROCEDURE upgrade_points_flow_source_id()
+BEGIN
+    IF EXISTS (SELECT * FROM information_schema.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'points_flow' 
+               AND COLUMN_NAME = 'source_id' 
+               AND DATA_TYPE = 'bigint') THEN
+        ALTER TABLE points_flow 
+            MODIFY COLUMN source_id VARCHAR(64) COMMENT '来源记录ID';
+    END IF;
+END$$
+DELIMITER ;
+CALL upgrade_points_flow_source_id();
+DROP PROCEDURE upgrade_points_flow_source_id;
 
 -- ======================================================
 -- 清空已有居民档案数据（仅清空 resident_profile 表）

@@ -10,6 +10,10 @@ import java.time.LocalDateTime;
  * 用于整改任务详情页展示，包含完整的前后对比信息
  * 村民端和管理端共用此VO
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 字段类型从 Long 改为 String，与实体类 RectificationTask 保持一致
+ * - 包括：id, applyId, userId, batchId, reviewerId, inspectorId
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -19,19 +23,19 @@ public class RectificationDetailVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 整改任务ID
+     * 整改任务ID（雪花ID字符串）
      */
-    private Long id;
+    private String id;
 
     /**
-     * 关联积分申请/评分记录ID
+     * 关联积分申请/评分记录ID（雪花ID字符串）
      */
-    private Long applyId;
+    private String applyId;
 
     /**
-     * 责任户主用户ID
+     * 责任户主用户ID（雪花ID字符串）
      */
-    private Long userId;
+    private String userId;
 
     /**
      * 责任户主姓名
@@ -44,9 +48,9 @@ public class RectificationDetailVO implements Serializable {
     private String userPhone;
 
     /**
-     * 关联检查批次ID
+     * 关联检查批次ID（雪花ID字符串）
      */
-    private Long batchId;
+    private String batchId;
 
     /**
      * 扣分规则名称
@@ -102,9 +106,9 @@ public class RectificationDetailVO implements Serializable {
     private String reviewRemark;
 
     /**
-     * 复核人ID（管理员）
+     * 复核人ID（管理员，雪花ID字符串）
      */
-    private Long reviewerId;
+    private String reviewerId;
 
     /**
      * 复核人姓名
@@ -122,9 +126,9 @@ public class RectificationDetailVO implements Serializable {
     private Integer rewardPoints;
 
     /**
-     * 检查人ID
+     * 检查人ID（雪花ID字符串）
      */
-    private Long inspectorId;
+    private String inspectorId;
 
     /**
      * 检查人姓名

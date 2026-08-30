@@ -87,7 +87,7 @@ public class InspectionHousehold implements Serializable {
     @TableLogic
     private Integer deleted;
 
-    // ==================== 手动 getter/setter（确保 Lombok 未生效时编译通过） ====================
+    // ==================== 手动 getter/setter ====================
 
     public String getId() {
         return id;

@@ -19,6 +19,10 @@ import java.util.UUID;
  * 文件上传控制器
  * 支持图片等文件上传，采用本地存储
  *
+ * 修复说明（2026-08-30）：
+ * - 默认图片访问前缀改为公网 IP，确保小程序可访问
+ * - 增加日志输出当前配置的前缀，便于排查
+ *
  * @author system
  * @since 2026-07-17
  */
@@ -32,10 +36,10 @@ public class UploadController {
 
     /**
      * 图片访问前缀（从配置文件读取）
-     * 开发环境：http://localhost:8080
-     * 生产环境：https://api.yourdomain.com
+     * 默认使用公网 IP，确保小程序、前端能正常访问图片
+     * 可通过 application.yml 中的 image.url-prefix 覆盖
      */
-    @Value("${image.url-prefix:http://localhost:8080}")
+    @Value("${image.url-prefix:http://8.148.231.7:8081}")
     private String imageUrlPrefix;
 
     /**

@@ -9,6 +9,10 @@ import java.time.LocalDateTime;
  * 申诉详情视图对象
  * 用于展示申诉的完整信息，包括关联的积分记录和规则信息
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 字段类型从 Long 改为 String，与实体类 AppealRecord 保持一致
+ * - 包括：id, applyId, userId, reviewerId, batchId
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -20,19 +24,19 @@ public class AppealDetailVO implements Serializable {
     // ==================== 申诉基本信息 ====================
 
     /**
-     * 申诉记录ID
+     * 申诉记录ID（雪花ID字符串）
      */
-    private Long id;
+    private String id;
 
     /**
-     * 关联积分申请/评分记录ID（points_apply.id）
+     * 关联积分申请/评分记录ID（雪花ID字符串）
      */
-    private Long applyId;
+    private String applyId;
 
     /**
-     * 申诉人用户ID
+     * 申诉人用户ID（雪花ID字符串）
      */
-    private Long userId;
+    private String userId;
 
     /**
      * 申诉人姓名
@@ -65,9 +69,9 @@ public class AppealDetailVO implements Serializable {
     private String decisionDetail;
 
     /**
-     * 复核人ID（管理员）
+     * 复核人ID（管理员，雪花ID字符串）
      */
-    private Long reviewerId;
+    private String reviewerId;
 
     /**
      * 复核人姓名
@@ -80,9 +84,9 @@ public class AppealDetailVO implements Serializable {
     private LocalDateTime reviewTime;
 
     /**
-     * 关联检查批次ID
+     * 关联检查批次ID（雪花ID字符串）
      */
-    private Long batchId;
+    private String batchId;
 
     /**
      * 申诉提交时间

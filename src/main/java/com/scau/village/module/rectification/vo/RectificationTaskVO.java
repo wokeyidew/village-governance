@@ -9,6 +9,10 @@ import java.time.LocalDateTime;
  * 整改任务列表展示视图对象
  * 用于村民端和管理端的整改任务列表展示
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 字段类型从 Long 改为 String，与实体类 RectificationTask 保持一致
+ * - 包括：id, applyId, userId
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -18,19 +22,19 @@ public class RectificationTaskVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 整改任务ID
+     * 整改任务ID（雪花ID字符串）
      */
-    private Long id;
+    private String id;
 
     /**
-     * 关联积分申请/评分记录ID
+     * 关联积分申请/评分记录ID（雪花ID字符串）
      */
-    private Long applyId;
+    private String applyId;
 
     /**
-     * 责任户主用户ID
+     * 责任户主用户ID（雪花ID字符串）
      */
-    private Long userId;
+    private String userId;
 
     /**
      * 责任户主姓名

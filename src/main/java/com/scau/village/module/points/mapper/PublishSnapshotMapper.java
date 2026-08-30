@@ -13,6 +13,9 @@ import java.util.List;
  * 对应表名：publish_snapshot
  * 提供快照的增删改查、按批次/月份查询等操作
  *
+ * 修复说明（2026-08-30）：
+ * - selectByBatchId 方法中 batchId 参数类型从 Long 改为 String，与实体类一致
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -22,11 +25,11 @@ public interface PublishSnapshotMapper extends BaseMapper<PublishSnapshot> {
     /**
      * 根据批次ID查询快照
      *
-     * @param batchId 批次ID
+     * @param batchId 批次ID（雪花ID字符串）
      * @return 快照对象
      */
     @Select("SELECT * FROM publish_snapshot WHERE batch_id = #{batchId} AND deleted = 0")
-    PublishSnapshot selectByBatchId(@Param("batchId") Long batchId);
+    PublishSnapshot selectByBatchId(@Param("batchId") String batchId);
 
     /**
      * 根据月份查询快照

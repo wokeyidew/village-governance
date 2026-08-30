@@ -17,6 +17,7 @@ import java.util.List;
  * 修复说明（2026-08-30）：
  * - 所有雪花 ID 参数类型从 Long 改为 String，与实体类字段类型保持一致
  * - 包括：userId、applyId、batchId、id
+ * - 已全部修改为 String 类型，无需再次修改
  *
  * @author system
  * @since 2026-08-19
@@ -76,7 +77,7 @@ public interface AppealRecordMapper extends BaseMapper<AppealRecord> {
     /**
      * 查询所有待处理的申诉记录（管理员端）
      *
-     * @param tenantId 租户ID
+     * @param tenantId 租户ID（整数，非雪花ID）
      * @return 待处理申诉列表
      */
     @Select("SELECT * FROM appeal_record WHERE tenant_id = #{tenantId} AND status = 'pending' AND deleted = 0 ORDER BY create_time ASC")

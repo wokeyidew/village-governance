@@ -90,7 +90,8 @@ public class AiMatchService {
 
             if (response.getStatusCode() == HttpStatus.OK) {
                 String body = response.getBody();
-                log.debug("【AI服务】响应内容: {}", body);
+                log.info("【AI服务】原始响应内容: {}", body);  // 改为 INFO 级别，便于排查
+
                 if (body != null) {
                     JSONObject json = JSONObject.parseObject(body);
                     if (json.containsKey("code") && json.getInteger("code") == 200) {
@@ -116,6 +117,16 @@ public class AiMatchService {
                             if (result.getRuleName() == null || result.getRuleName().trim().isEmpty()) {
                                 log.warn("【AI服务】规则名称为空，视为未匹配到规则");
                                 return null;
+                            }
+
+                            // ====== 额外检查：如果匹配结果是固定值（可能服务异常） ======
+                            // 如果 ruleIndex=1 且 confidence=0.5 且规则名称为"庭院地面干净整洁，无垃圾杂物"
+                            // 可能是 AI 服务降级返回的默认结果，但置信度通过了阈值，我们仍返回，但记录警告
+                            if (result.getRuleIndex() != null && result.getRuleIndex() == 1
+                                    && result.getConfidence() != null && Math.abs(result.getConfidence() - 0.5) < 0.01
+                                    && "庭院地面干净整洁，无垃圾杂物".equals(result.getRuleName())) {
+                                log.warn("【AI服务】检测到疑似固定默认结果（ruleIndex=1, confidence=0.5），可能是 AI 服务异常降级，请检查 Python 服务");
+                                // 仍然返回，不阻断，但上层可据此做进一步处理（目前只记录）
                             }
 
                             return result;

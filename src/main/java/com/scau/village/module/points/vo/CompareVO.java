@@ -9,6 +9,10 @@ import java.util.List;
  * 月度红黑榜对比视图对象
  * 用于展示两个月份之间的红黑榜变化情况
  *
+ * 修复说明（2026-08-30）：
+ * - 所有雪花 ID 字段类型从 Long 改为 String，与实体类 PublishSnapshot 保持一致
+ * - 包括：redAddedList, redExitedList, blackAddedList, blackExitedList, RankChange.userId
+ *
  * @author system
  * @since 2026-08-19
  */
@@ -68,24 +72,24 @@ public class CompareVO implements Serializable {
     private Integer blackExited;
 
     /**
-     * 红榜新增用户ID列表
+     * 红榜新增用户ID列表（雪花ID字符串列表）
      */
-    private List<Long> redAddedList;
+    private List<String> redAddedList;
 
     /**
-     * 红榜退出用户ID列表
+     * 红榜退出用户ID列表（雪花ID字符串列表）
      */
-    private List<Long> redExitedList;
+    private List<String> redExitedList;
 
     /**
-     * 黑榜新增用户ID列表
+     * 黑榜新增用户ID列表（雪花ID字符串列表）
      */
-    private List<Long> blackAddedList;
+    private List<String> blackAddedList;
 
     /**
-     * 黑榜退出用户ID列表
+     * 黑榜退出用户ID列表（雪花ID字符串列表）
      */
-    private List<Long> blackExitedList;
+    private List<String> blackExitedList;
 
     /**
      * 用户排名变化列表（包含所有在两个月份都有记录的用户）
@@ -100,9 +104,9 @@ public class CompareVO implements Serializable {
         private static final long serialVersionUID = 1L;
 
         /**
-         * 用户ID
+         * 用户ID（雪花ID字符串）
          */
-        private Long userId;
+        private String userId;
 
         /**
          * 用户姓名
@@ -134,7 +138,7 @@ public class CompareVO implements Serializable {
          */
         public String getChangeText() {
             if (change == null) {
-            return "数据缺失";
+                return "数据缺失";
             }
             if (change == 0) {
                 return "持平";
