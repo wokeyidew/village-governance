@@ -8,9 +8,11 @@ import com.scau.village.common.service.AiMatchService;
 import com.scau.village.module.points.dto.CreateBatchDto;
 import com.scau.village.module.points.dto.InspectionQueryDto;
 import com.scau.village.module.points.dto.OfflineScoreDto;
+import com.scau.village.module.points.dto.ReviewDto;
 import com.scau.village.module.points.dto.ScoreSubmitDto;
 import com.scau.village.module.points.entity.InspectionBatch;
 import com.scau.village.module.points.entity.OfflineSyncRecord;
+import com.scau.village.module.points.entity.PointsApply;
 import com.scau.village.module.points.entity.PointsRule;
 import com.scau.village.module.points.entity.PublishSnapshot;
 import com.scau.village.module.points.mapper.OfflineSyncRecordMapper;
@@ -19,6 +21,7 @@ import com.scau.village.module.points.mapper.PointsRuleMapper;
 import com.scau.village.module.points.service.InspectionBatchService;
 import com.scau.village.module.points.service.PointsApplyService;
 import com.scau.village.module.points.service.PublishSnapshotService;
+import com.scau.village.module.points.service.ReviewFlowService;
 import com.scau.village.module.points.vo.AiMatchVO;
 import com.scau.village.module.points.vo.CompareVO;
 import com.scau.village.module.points.vo.ExportDataVO;
@@ -70,6 +73,7 @@ public class InspectionController {
     private final PublishSnapshotService publishSnapshotService;
     private final AiMatchService aiMatchService;
     private final OfflineSyncRecordMapper offlineSyncRecordMapper;
+    private final ReviewFlowService reviewFlowService;
 
     /**
      * 1. 创建检查批次
@@ -118,6 +122,37 @@ public class InspectionController {
         Integer tenantId = UserContext.getCurrentTenantId();
         pointsApplyService.saveAdminScore(dto, inspectorId, tenantId);
         return Result.success(null);
+    }
+
+    /** 双审规则的阶段审核；全部阶段通过后才结算积分。 */
+    @PostMapping("/review/{applyId}")
+    public Result<Boolean> reviewScore(@PathVariable String applyId,
+                                       @Valid @RequestBody ReviewDto dto) {
+        Long reviewerIdLong = UserContext.getCurrentUserId();
+        if (reviewerIdLong == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (!"approved".equals(dto.getDecision()) && !"rejected".equals(dto.getDecision())) {
+            return Result.error(400, "审核决定必须为 approved 或 rejected");
+        }
+        PointsApply apply = pointsApplyService.getById(applyId);
+        if (apply == null || !"pending_review".equals(apply.getStatus())) {
+            return Result.error(400, "评分申请不在待双审状态");
+        }
+
+        int reviewerId = reviewerIdLong.intValue();
+        boolean fullyApproved = reviewFlowService.completeStage(
+                applyId, reviewerId, dto.getDecision(), dto.getRemark());
+        if ("rejected".equals(dto.getDecision())) {
+            apply.setStatus("rejected");
+            apply.setAuditorId(reviewerId);
+            apply.setAuditTime(LocalDateTime.now());
+            apply.setAuditRemark(dto.getRemark());
+            pointsApplyService.updateById(apply);
+        } else if (fullyApproved) {
+            pointsApplyService.postDoubleApproval(applyId, reviewerId);
+        }
+        return Result.success("审核处理完成", fullyApproved);
     }
 
     /**

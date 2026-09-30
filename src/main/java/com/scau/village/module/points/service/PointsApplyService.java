@@ -45,4 +45,7 @@ public interface PointsApplyService extends IService<PointsApply> {
      * @param tenantId    租户ID
      */
     void saveAdminScore(ScoreSubmitDto dto, Integer inspectorId, Integer tenantId);
+
+    /** 双审全部通过后完成积分、流水、证据和整改结算。 */
+    void postDoubleApproval(String applyId, int reviewerId);
 }

@@ -20,6 +20,7 @@ import com.scau.village.module.points.service.RuleComponentService;
 import com.scau.village.module.points.service.RuleConstraintService;
 import com.scau.village.module.points.service.RuleObservationEventService;
 import com.scau.village.module.points.service.RuleOccurrenceService;
+import com.scau.village.module.points.service.ReviewFlowService;
 import com.scau.village.module.points.service.ScoreEvidenceService;
 import com.scau.village.module.rectification.service.RectificationTaskService;
 import com.scau.village.module.user.entity.User;
@@ -55,6 +56,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
     private final PoultryPenaltyDecisionService poultryPenaltyDecisionService;
     private final RuleOccurrenceService ruleOccurrenceService;
     private final RuleComponentService ruleComponentService;
+    private final ReviewFlowService reviewFlowService;
 
     // ==================== 原有村民申报方法 ====================
     @Override
@@ -250,6 +252,9 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             if (rule.getStatus() != 1) {
                 throw new BusinessException("规则[" + rule.getRuleName() + "]已禁用，不能使用");
             }
+            if (isDoubleReview(rule)) {
+                continue;
+            }
             int rulePoints = Integer.valueOf(16).equals(rule.getId())
                     ? rule16Score : rule.getPoints();
             totalScore += rulePoints;
@@ -272,6 +277,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
         // 遍历规则，逐条写入 points_apply 和 points_flow
         for (PointsRule rule : rules) {
+            boolean doubleReview = isDoubleReview(rule);
             int appliedPoints = Integer.valueOf(16).equals(rule.getId())
                     ? rule16Score : rule.getPoints();
             // ----- 1. 写入 points_apply -----
@@ -286,9 +292,9 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             } else {
                 apply.setImages(dto.getImages() != null ? String.join(",", dto.getImages()) : null);
             }
-            apply.setStatus("approved");
+            apply.setStatus(doubleReview ? "pending_review" : "approved");
             apply.setAuditorId(inspectorId);
-            apply.setAuditRemark("管理员现场评分");
+            apply.setAuditRemark(doubleReview ? "等待第二阶段审核" : "管理员现场评分");
             apply.setAuditTime(LocalDateTime.now());
             apply.setSourceType("admin_inspection");
             apply.setInspectorId(inspectorId);
@@ -300,6 +306,11 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             save(apply);
             log.info("【评分提交】✅ 写入 points_apply 成功，applyId={}, ruleId={}, sourceType={}",
                     apply.getId(), rule.getId(), apply.getSourceType());
+
+            if (doubleReview) {
+                reviewFlowService.startDoubleReview(apply.getId(), inspectorId);
+                continue;
+            }
 
             if ("poultry_free_range".equals(rule.getRuleFamilyCode())) {
                 ruleOccurrenceService.record(dto.getUserId(), "poultry_free_range",
@@ -389,31 +400,33 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             }
         }
 
-        // 7. 更新用户积分（同时更新三个字段）
-        int newPoints = user.getPoints() + totalScore;
-        user.setPoints(newPoints);
-        if (positiveScoreSum > 0) {
-            user.setTotalEarnedPoints(user.getTotalEarnedPoints() + positiveScoreSum);
-        }
-        user.setAvailablePoints(newPoints);
-        userMapper.updateById(user);
-        log.info("【评分提交】用户积分更新，userId={}, 新增积分={}, 正分总和={}, 当前总积分={}, 总获得积分={}, 可用积分={}",
-                user.getId(), totalScore, positiveScoreSum, user.getPoints(),
-                user.getTotalEarnedPoints(), user.getAvailablePoints());
+        boolean hasImmediateRule = rules.stream().anyMatch(rule -> !isDoubleReview(rule));
+        if (hasImmediateRule) {
+            // 7. 更新用户积分（同时更新三个字段）
+            int newPoints = user.getPoints() + totalScore;
+            user.setPoints(newPoints);
+            if (positiveScoreSum > 0) {
+                user.setTotalEarnedPoints(user.getTotalEarnedPoints() + positiveScoreSum);
+            }
+            user.setAvailablePoints(newPoints);
+            userMapper.updateById(user);
+            log.info("【评分提交】用户积分更新，userId={}, 新增积分={}, 正分总和={}, 当前总积分={}, 总获得积分={}, 可用积分={}",
+                    user.getId(), totalScore, positiveScoreSum, user.getPoints(),
+                    user.getTotalEarnedPoints(), user.getAvailablePoints());
 
-        // 8. 更新/插入户汇总表（修复：将 batchId 和 inspectorId 转为 String）
-        String detailJson = JSON.toJSONString(detailList);
-        // 调用 service 保存汇总，增加日志记录结果
-        InspectionHousehold household = inspectionHouseholdService.saveOrUpdateSummary(
-                String.valueOf(batchId),
-                dto.getUserId(),
-                totalScore,
-                detailJson,
-                String.valueOf(inspectorId),
-                dto.getDescription()
-        );
-        log.info("【评分提交】户汇总表更新完成，userId={}, totalScore={}, householdId={}",
-                dto.getUserId(), totalScore, household != null ? household.getId() : "null");
+            // 8. 更新/插入户汇总表（修复：将 batchId 和 inspectorId 转为 String）
+            String detailJson = JSON.toJSONString(detailList);
+            InspectionHousehold household = inspectionHouseholdService.saveOrUpdateSummary(
+                    String.valueOf(batchId),
+                    dto.getUserId(),
+                    totalScore,
+                    detailJson,
+                    String.valueOf(inspectorId),
+                    dto.getDescription()
+            );
+            log.info("【评分提交】户汇总表更新完成，userId={}, totalScore={}, householdId={}",
+                    dto.getUserId(), totalScore, household != null ? household.getId() : "null");
+        }
 
         // 9. 记录操作日志
         operationLogService.log(inspectorId.longValue(), "INSPECTION_SCORE",
@@ -422,6 +435,121 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
         log.info("【评分提交】✅ 全部处理完成，userId={}, 规则数={}, 总得分={}",
                 dto.getUserId(), rules.size(), totalScore);
+    }
+
+    /**
+     * 双审全部通过后的结算流程。
+     * 首次提交只保存 pending_review 申请，积分、流水、证据和整改在此处统一生效。
+     */
+    @Override
+    @Transactional
+    public void postDoubleApproval(String applyId, int reviewerId) {
+        PointsApply apply = getById(applyId);
+        if (apply == null) {
+            throw new BusinessException("评分申请不存在");
+        }
+        if ("approved".equals(apply.getStatus())) {
+            return;
+        }
+        if (!"pending_review".equals(apply.getStatus())) {
+            throw new BusinessException("评分申请不在待双审状态");
+        }
+
+        PointsRule rule = ruleMapper.selectById(apply.getRuleId());
+        if (rule == null || !isDoubleReview(rule)) {
+            throw new BusinessException("该评分申请不是双审规则");
+        }
+        User user = userMapper.selectById(apply.getUserId());
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        InspectionBatch batch = apply.getInspectionBatchId() == null
+                ? null : inspectionBatchService.getById(apply.getInspectionBatchId());
+
+        int changeAmount = rule.getPoints();
+        user.setPoints(user.getPoints() + changeAmount);
+        if (changeAmount > 0) {
+            user.setTotalEarnedPoints(user.getTotalEarnedPoints() + changeAmount);
+        }
+        user.setAvailablePoints(user.getAvailablePoints() + changeAmount);
+        userMapper.updateById(user);
+
+        PointsFlow flow = new PointsFlow();
+        flow.setUserId(user.getId());
+        flow.setChangeAmount(changeAmount);
+        flow.setSourceType("admin_inspection");
+        flow.setSourceId(apply.getId());
+        flow.setApplyId(apply.getId());
+        flow.setBatchId(apply.getInspectionBatchId() == null
+                ? null : String.valueOf(apply.getInspectionBatchId()));
+        flow.setBatchName(batch == null ? null : batch.getBatchName());
+        flow.setRemark("双审通过：" + rule.getRuleName());
+        flow.setCreateTime(LocalDateTime.now());
+        flowMapper.insert(flow);
+
+        if (changeAmount < 0) {
+            saveDoubleApprovalEvidenceAndTask(apply, rule, user, reviewerId, batch);
+        }
+
+        apply.setStatus("approved");
+        apply.setAuditorId(reviewerId);
+        apply.setAuditTime(LocalDateTime.now());
+        apply.setAuditRemark("双审通过");
+        updateById(apply);
+
+        List<ScoreDetail> details = new ArrayList<>();
+        ScoreDetail detail = new ScoreDetail();
+        detail.setRuleId(rule.getId());
+        detail.setRuleName(rule.getRuleName());
+        detail.setScore(changeAmount);
+        details.add(detail);
+        if (batch != null) {
+            inspectionHouseholdService.saveOrUpdateSummary(
+                    String.valueOf(batch.getId()), apply.getUserId(), changeAmount,
+                    JSON.toJSONString(details), String.valueOf(reviewerId), apply.getDescription());
+        }
+        operationLogService.log((long) reviewerId, "INSPECTION_REVIEW",
+                "双审通过评分申请 ID:" + applyId + "，规则:" + rule.getRuleName());
+    }
+
+    private void saveDoubleApprovalEvidenceAndTask(PointsApply apply, PointsRule rule,
+                                                   User user, int reviewerId,
+                                                   InspectionBatch batch) {
+        String images = apply.getImages();
+        if (StringUtils.isNotBlank(images)) {
+            try {
+                ScoreEvidence evidence = new ScoreEvidence();
+                evidence.setApplyId(apply.getId());
+                evidence.setPhotoUrls(images);
+                evidence.setPhotoCount(images.split(",").length);
+                evidence.setLocation("");
+                evidence.setInspectorId(String.valueOf(apply.getInspectorId()));
+                evidence.setBatchId(apply.getInspectionBatchId() == null
+                        ? null : String.valueOf(apply.getInspectionBatchId()));
+                evidence.setRuleVersion(rule.getRuleVersion() == null ? "1.0" : rule.getRuleVersion());
+                evidence.setRuleName(rule.getRuleName());
+                evidence.setUserName(user.getRealName());
+                evidence.setHasWatermark(1);
+                evidence.setCreateTime(LocalDateTime.now());
+                evidence.setTenantId(apply.getTenantId());
+                scoreEvidenceService.save(evidence);
+            } catch (Exception e) {
+                log.error("【双审证据保存】失败，applyId={}, error={}", apply.getId(), e.getMessage(), e);
+            }
+        }
+        try {
+            rectificationTaskService.createTask(
+                    apply.getId(), apply.getUserId().longValue(),
+                    apply.getInspectionBatchId() == null ? null : String.valueOf(apply.getInspectionBatchId()),
+                    rule.getRuleName(), "请按照要求进行整改，整改完成后拍照上传。",
+                    LocalDateTime.now().plusDays(7), images, String.valueOf(reviewerId));
+        } catch (Exception e) {
+            log.error("【双审整改】创建任务失败，applyId={}, error={}", apply.getId(), e.getMessage(), e);
+        }
+    }
+
+    private boolean isDoubleReview(PointsRule rule) {
+        return rule != null && "double".equalsIgnoreCase(rule.getAuditFlow());
     }
 
     /**
