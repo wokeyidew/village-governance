@@ -103,4 +103,12 @@ public class ScoreEvidence {
      */
     @TableLogic
     private Integer deleted;
+
+    /** 观察结束时间，规则 #37 的复查证据使用。 */
+    @TableField("observed_at")
+    private LocalDateTime observedAt;
+
+    /** 观察类型，例如规则 #37 的 recheck。 */
+    @TableField("observation_type")
+    private String observationType;
 }

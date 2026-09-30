@@ -7,6 +7,7 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -59,6 +60,12 @@ public class ScoreSubmitDto {
 
     /** 重要贡献认定记录 ID，仅 important 行为规则使用。 */
     private String contributionId;
+
+    /** 规则 #37 的复查观察时间。 */
+    private LocalDateTime observedAt;
+
+    /** 规则 #37 的首次发现时间。 */
+    private LocalDateTime firstObservedAt;
 
     /**
      * 容错处理：前端可能传空字符串 "" 或 [""]，转为空列表

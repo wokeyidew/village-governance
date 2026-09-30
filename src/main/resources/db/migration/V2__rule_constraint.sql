@@ -214,5 +214,11 @@ VALUES
   (16, '1.0', 'greenery', '绿化', 5, 0),
   (16, '1.0', 'order', '秩序', 5, 0);
 
+-- 为规则 #37 写入垃圾堆积持续时间约束，超过 48 小时才允许扣分。
+INSERT IGNORE INTO rule_constraint
+  (rule_id, rule_version, window_type, window_value, max_times, require_photo, require_review_flow, effective_from)
+VALUES
+  (37, '1.0', 'duration_hours', 48, 0, 1, 'single', CURRENT_TIMESTAMP);
+
 -- ROLLBACK
 -- 回滚请执行同目录 V2__rule_constraint_rollback.sql；生产环境回滚前应备份新增字段中的规则决策、证据和审核数据。

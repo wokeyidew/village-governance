@@ -17,6 +17,7 @@ import com.scau.village.module.points.service.ImportantContributionService;
 import com.scau.village.module.points.service.MonthlyQuotaService;
 import com.scau.village.module.points.service.PointsApplyService;
 import com.scau.village.module.points.service.PoultryPenaltyDecisionService;
+import com.scau.village.module.points.service.DurationConstraintService;
 import com.scau.village.module.points.service.RuleComponentService;
 import com.scau.village.module.points.service.RuleConstraintService;
 import com.scau.village.module.points.service.RuleObservationEventService;
@@ -59,6 +60,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
     private final RuleComponentService ruleComponentService;
     private final ReviewFlowService reviewFlowService;
     private final ImportantContributionService importantContributionService;
+    private final DurationConstraintService durationConstraintService;
 
     // ==================== 原有村民申报方法 ====================
     @Override
@@ -281,6 +283,20 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         if (rules.stream().anyMatch(rule -> rule.getId() != null && rule.getId() == 5)) {
             validateRuleFiveWindow(dto.getUserId(), scoreTime);
         }
+        if (rules.stream().anyMatch(rule -> Integer.valueOf(10).equals(rule.getId()))) {
+            validateRuleTenWindow(dto.getUserId(), scoreTime);
+        }
+
+        LocalDateTime durationStart = null;
+        LocalDateTime durationEnd = null;
+        Integer durationHours = null;
+        if (rules.stream().anyMatch(rule -> Integer.valueOf(37).equals(rule.getId()))) {
+            durationStart = dto.getFirstObservedAt();
+            durationEnd = dto.getObservedAt();
+            durationConstraintService.assertExceeded(durationStart, durationEnd, 48);
+            durationHours = Math.toIntExact(durationConstraintService
+                    .calculateHours(durationStart, durationEnd));
+        }
 
         LocalDate inspectionDate = batch.getInspectionDate();
 
@@ -311,6 +327,11 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             apply.setInspectionDate(inspectionDate);
             apply.setHasEvidence(hasPenaltyRule ? 1 : 0);
             apply.setCreateTime(LocalDateTime.now());
+            if (Integer.valueOf(37).equals(rule.getId())) {
+                apply.setDurationStart(durationStart);
+                apply.setDurationEnd(durationEnd);
+                apply.setDurationHours(durationHours);
+            }
 
             save(apply);
             log.info("【评分提交】✅ 写入 points_apply 成功，applyId={}, ruleId={}, sourceType={}",
@@ -330,6 +351,16 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             if (rule.getId() != null && rule.getId() == 5) {
                 ruleObservationEventService.record(dto.getUserId(), 5, "classified",
                         scoreTime, apply.getId() == null ? null : apply.getId().toString());
+            }
+
+            if (Integer.valueOf(10).equals(rule.getId())) {
+                ruleObservationEventService.record(dto.getUserId(), 10, "greenery_clean",
+                        scoreTime, apply.getId());
+            }
+
+            if (Integer.valueOf(40).equals(rule.getId())) {
+                ruleObservationEventService.record(dto.getUserId(), 40, "greenery_damage",
+                        scoreTime, apply.getId());
             }
 
             if (Integer.valueOf(16).equals(rule.getId())) {
@@ -373,6 +404,10 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
                         evidence.setRuleName(rule.getRuleName());
                         evidence.setUserName(user.getRealName());
                         evidence.setHasWatermark(1);
+                        if (Integer.valueOf(37).equals(rule.getId())) {
+                            evidence.setObservedAt(dto.getObservedAt());
+                            evidence.setObservationType("recheck");
+                        }
                         evidence.setCreateTime(LocalDateTime.now());
                         evidence.setTenantId(tenantId);
 
@@ -564,6 +599,24 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
     private boolean isImportantContribution(PointsRule rule) {
         return rule != null && "important".equalsIgnoreCase(rule.getBehaviorType());
+    }
+
+    /** 校验规则 #10 的滚动 30 天公共绿化无破坏窗口。 */
+    private void validateRuleTenWindow(int userId, LocalDateTime now) {
+        RuleConstraintService.Window window;
+        RuleConstraint constraint = ruleConstraintService.getEffective(10, now);
+        if (constraint == null) {
+            throw new BusinessException("规则#10时间窗口约束未配置");
+        }
+        try {
+            window = ruleConstraintService.resolve(constraint, now);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException("规则#10时间窗口约束无效");
+        }
+        if (ruleObservationEventService.exists(userId, 40, "greenery_damage",
+                window.getStart(), window.getEnd())) {
+            throw new BusinessException("一个月内存在公共绿化破坏记录");
+        }
     }
 
     /**

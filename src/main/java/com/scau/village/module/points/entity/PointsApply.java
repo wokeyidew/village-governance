@@ -115,4 +115,16 @@ public class PointsApply {
     @TableField(value = "has_evidence")
     private Integer hasEvidence;
 
+    /** 持续观察起始时间，规则 #37 使用。 */
+    @TableField("duration_start")
+    private LocalDateTime durationStart;
+
+    /** 持续观察结束时间，规则 #37 使用。 */
+    @TableField("duration_end")
+    private LocalDateTime durationEnd;
+
+    /** 持续观察小时数，规则 #37 使用。 */
+    @TableField("duration_hours")
+    private Integer durationHours;
+
 }
