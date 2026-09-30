@@ -14,8 +14,10 @@ import com.scau.village.module.points.mapper.PointsRuleMapper;
 import com.scau.village.module.points.service.InspectionBatchService;
 import com.scau.village.module.points.service.InspectionHouseholdService;
 import com.scau.village.module.points.service.PointsApplyService;
+import com.scau.village.module.points.service.PoultryPenaltyDecisionService;
 import com.scau.village.module.points.service.RuleConstraintService;
 import com.scau.village.module.points.service.RuleObservationEventService;
+import com.scau.village.module.points.service.RuleOccurrenceService;
 import com.scau.village.module.points.service.ScoreEvidenceService;
 import com.scau.village.module.rectification.service.RectificationTaskService;
 import com.scau.village.module.user.entity.User;
@@ -47,6 +49,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
     private final WatermarkUtils watermarkUtils;
     private final RuleConstraintService ruleConstraintService;
     private final RuleObservationEventService ruleObservationEventService;
+    private final PoultryPenaltyDecisionService poultryPenaltyDecisionService;
+    private final RuleOccurrenceService ruleOccurrenceService;
 
     // ==================== 原有村民申报方法 ====================
     @Override
@@ -186,6 +190,26 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         }
 
         // 检查是否包含扣分规则
+        // 家禽散养规则必须根据历史发生次数确定阶梯，不能由调用方直接选择任意规则 ID。
+        Integer poultryExpectedRuleId = null;
+        Integer poultryExpectedStep = null;
+        Integer poultryOccurrenceNo = null;
+        for (PointsRule rule : rules) {
+            if ("poultry_free_range".equals(rule.getRuleFamilyCode())) {
+                if (poultryExpectedRuleId == null) {
+                    poultryExpectedRuleId = poultryPenaltyDecisionService.resolveRuleId(dto.getUserId());
+                    poultryExpectedStep = poultryExpectedRuleId == 43 ? 1
+                            : poultryExpectedRuleId == 44 ? 2 : 3;
+                    poultryOccurrenceNo = ruleOccurrenceService.nextOccurrenceNo(
+                            dto.getUserId(), "poultry_free_range");
+                }
+                if (!Integer.valueOf(rule.getId()).equals(poultryExpectedRuleId)) {
+                    throw new BusinessException("家禽散养阶梯与历史发现次数不一致，应为第"
+                            + poultryExpectedStep + "次");
+                }
+            }
+        }
+
         boolean hasPenaltyRule = rules.stream().anyMatch(rule -> rule.getPoints() < 0);
 
         // 扣分项必须上传照片
@@ -253,6 +277,12 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             save(apply);
             log.info("【评分提交】✅ 写入 points_apply 成功，applyId={}, ruleId={}, sourceType={}",
                     apply.getId(), rule.getId(), apply.getSourceType());
+
+            if ("poultry_free_range".equals(rule.getRuleFamilyCode())) {
+                ruleOccurrenceService.record(dto.getUserId(), "poultry_free_range",
+                        poultryOccurrenceNo == null ? poultryExpectedStep : poultryOccurrenceNo,
+                        apply.getId(), rule.getRuleVersion());
+            }
 
             if (rule.getId() != null && rule.getId() == 5) {
                 ruleObservationEventService.record(dto.getUserId(), 5, "classified",

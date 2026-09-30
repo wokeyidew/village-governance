@@ -30,6 +30,18 @@ public class PointsRule {
 
     private Integer maxTimesPerDay;
 
+    /** 规则族编码，用于识别需要统一决策的阶梯规则。 */
+    @TableField("rule_family_code")
+    private String ruleFamilyCode;
+
+    /** 规则在规则族中的阶梯序号。 */
+    @TableField("step_no")
+    private Integer stepNo;
+
+    /** 规则版本号，用于追踪规则变更。 */
+    @TableField("rule_version")
+    private String ruleVersion;
+
     private Integer status;
 
     private Integer sortOrder;

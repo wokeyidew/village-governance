@@ -24,10 +24,10 @@ import java.time.LocalDateTime;
 public class ScoreEvidence {
 
     /**
-     * 主键ID（自增）
+     * 主键ID（雪花算法生成的字符串）
      */
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
+    private String id;
 
     /**
      * 关联积分申请/评分记录ID（points_apply.id）
