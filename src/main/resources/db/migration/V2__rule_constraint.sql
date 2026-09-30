@@ -5,6 +5,7 @@
 -- 创建规则约束表：保存规则版本、时间窗口、次数上限和审核要求。
 CREATE TABLE IF NOT EXISTS rule_constraint (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id INT NOT NULL DEFAULT 1 COMMENT '租户ID',
   rule_id INT NOT NULL,
   rule_version VARCHAR(20) NOT NULL,
   window_type VARCHAR(20) NOT NULL,
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS rule_constraint (
 -- 创建规则观察事件表：保存混装、绿化破坏、垃圾持续存在等可审计事实。
 CREATE TABLE IF NOT EXISTS rule_observation_event (
   id BIGINT NOT NULL AUTO_INCREMENT,
-  tenant_id INT NOT NULL,
+  tenant_id INT NOT NULL DEFAULT 1 COMMENT '租户ID',
   user_id INT NOT NULL,
   rule_id INT NOT NULL,
   rule_version VARCHAR(20) NOT NULL,
@@ -41,7 +42,7 @@ CREATE TABLE IF NOT EXISTS rule_observation_event (
 -- 创建规则阶梯发生表：记录 #43-45 的累计次数和撤销标记，不重算历史阶梯。
 CREATE TABLE IF NOT EXISTS rule_occurrence (
   id BIGINT NOT NULL AUTO_INCREMENT,
-  tenant_id INT NOT NULL,
+  tenant_id INT NOT NULL DEFAULT 1 COMMENT '租户ID',
   user_id INT NOT NULL,
   family_code VARCHAR(64) NOT NULL,
   occurrence_no INT NOT NULL,
@@ -58,6 +59,7 @@ CREATE TABLE IF NOT EXISTS rule_occurrence (
 -- 创建规则组件定义表：保存 #16 门前三包的卫生、绿化、秩序三个独立子项。
 CREATE TABLE IF NOT EXISTS rule_component (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id INT NOT NULL DEFAULT 1 COMMENT '租户ID',
   rule_id INT NOT NULL,
   rule_version VARCHAR(20) NOT NULL,
   component_code VARCHAR(32) NOT NULL,
@@ -71,6 +73,7 @@ CREATE TABLE IF NOT EXISTS rule_component (
 -- 创建规则组件结果表：保存每次申请的组件通过、不通过或未检查结果。
 CREATE TABLE IF NOT EXISTS rule_component_result (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id INT NOT NULL DEFAULT 1 COMMENT '租户ID',
   apply_id VARCHAR(64) NOT NULL,
   component_id BIGINT NOT NULL,
   result VARCHAR(20) NOT NULL,
@@ -83,6 +86,7 @@ CREATE TABLE IF NOT EXISTS rule_component_result (
 -- 创建审核记录表：保存 single/double 审核各阶段及最终决定。
 CREATE TABLE IF NOT EXISTS rule_review (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id INT NOT NULL DEFAULT 1 COMMENT '租户ID',
   apply_id VARCHAR(64) NOT NULL,
   stage_no INT NOT NULL,
   reviewer_id INT NOT NULL,
@@ -92,6 +96,20 @@ CREATE TABLE IF NOT EXISTS rule_review (
   PRIMARY KEY (id),
   UNIQUE KEY uk_rule_review_apply_stage (apply_id, stage_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 为已存在的 V2 新表幂等补齐租户字段；新建表已在 CREATE TABLE 中定义相同字段。
+SET @c := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'rule_constraint' AND column_name = 'tenant_id');
+SET @s := IF(@c = 0, 'ALTER TABLE rule_constraint ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 COMMENT ''租户ID''', 'SELECT 1'); PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+SET @c := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'rule_observation_event' AND column_name = 'tenant_id');
+SET @s := IF(@c = 0, 'ALTER TABLE rule_observation_event ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 COMMENT ''租户ID''', 'SELECT 1'); PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+SET @c := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'rule_occurrence' AND column_name = 'tenant_id');
+SET @s := IF(@c = 0, 'ALTER TABLE rule_occurrence ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 COMMENT ''租户ID''', 'SELECT 1'); PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+SET @c := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'rule_component' AND column_name = 'tenant_id');
+SET @s := IF(@c = 0, 'ALTER TABLE rule_component ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 COMMENT ''租户ID''', 'SELECT 1'); PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+SET @c := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'rule_component_result' AND column_name = 'tenant_id');
+SET @s := IF(@c = 0, 'ALTER TABLE rule_component_result ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 COMMENT ''租户ID''', 'SELECT 1'); PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
+SET @c := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'rule_review' AND column_name = 'tenant_id');
+SET @s := IF(@c = 0, 'ALTER TABLE rule_review ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 COMMENT ''租户ID''', 'SELECT 1'); PREPARE p FROM @s; EXECUTE p; DEALLOCATE PREPARE p;
 
 -- 为 points_apply 增加规则版本、窗口、行为、审核、组件和持续时间字段（幂等动态 DDL）。
 SET @c := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'points_apply' AND column_name = 'rule_version');
@@ -199,7 +217,8 @@ INSERT IGNORE INTO rule_constraint
   (rule_id, rule_version, window_type, window_value, max_times, require_photo, require_review_flow, effective_from)
 VALUES
   (5, '1.0', 'rolling_days', 30, 1, 1, 'single', CURRENT_TIMESTAMP),
-  (10, '1.0', 'rolling_days', 30, 1, 1, 'single', CURRENT_TIMESTAMP);
+  (10, '1.0', 'rolling_days', 30, 1, 1, 'single', CURRENT_TIMESTAMP),
+  (37, '1.0', 'duration_hours', 48, 0, 1, 'single', CURRENT_TIMESTAMP);
 
 -- 为活动规则 #12 写入自然月四次上限和双重审核约束。
 INSERT IGNORE INTO rule_constraint
