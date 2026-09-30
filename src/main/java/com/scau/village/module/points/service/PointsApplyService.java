@@ -33,7 +33,7 @@ public interface PointsApplyService extends IService<PointsApply> {
      * @param approved  是否通过：true-通过，false-驳回
      * @param remark    审核备注（驳回时建议填写原因）
      */
-    void approve(Integer applyId, Long auditorId, Boolean approved, String remark);
+    void approve(String applyId, Long auditorId, Boolean approved, String remark);
 
     /**
      * 管理员现场评分

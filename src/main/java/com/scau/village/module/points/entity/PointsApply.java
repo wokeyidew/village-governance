@@ -21,10 +21,10 @@ import java.time.LocalDateTime;
 public class PointsApply {
 
     /**
-     * 主键ID（自增）
+     * 主键ID（雪花算法生成的字符串）
      */
-    @TableId(type = IdType.AUTO)
-    private Integer id;
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
+    private String id;
 
     /**
      * 租户ID

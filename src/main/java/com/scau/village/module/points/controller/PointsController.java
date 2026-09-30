@@ -67,7 +67,7 @@ public class PointsController {
 
     // 村委审核申报
     @PutMapping("/apply/{applyId}/audit")
-    public Result<Void> audit(@PathVariable Integer applyId,
+    public Result<Void> audit(@PathVariable String applyId,
                               @RequestParam Boolean approved,
                               @RequestParam(required = false) String remark) {
         SecurityUtils.checkRole("VILLAGE_ADMIN");

@@ -133,7 +133,7 @@ public class AppealRecordServiceImpl extends ServiceImpl<AppealRecordMapper, App
      * 记录积分流水（申诉来源）
      * 修复：sourceId 转为 String
      */
-    private void recordPointsFlow(User user, int changeAmount, Integer applyId, String remark) {
+    private void recordPointsFlow(User user, int changeAmount, String applyId, String remark) {
         if (user == null || changeAmount == 0) {
             return;
         }

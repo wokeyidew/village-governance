@@ -95,7 +95,7 @@ public class DashboardServiceImpl implements DashboardService {
                     PointsRule rule = pointsRuleMapper.selectById(apply.getRuleId());
                     if (rule != null && rule.getPoints() < 0) {
                         LambdaQueryWrapper<RectificationTask> taskWrapper = new LambdaQueryWrapper<>();
-                        taskWrapper.eq(RectificationTask::getApplyId, apply.getId().longValue())
+                        taskWrapper.eq(RectificationTask::getApplyId, apply.getId())
                                 .eq(RectificationTask::getStatus, RectificationTask.STATUS_RESOLVED);
                         Long count = rectificationTaskMapper.selectCount(taskWrapper);
                         if (count > 0) {

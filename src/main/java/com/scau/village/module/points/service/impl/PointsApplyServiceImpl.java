@@ -14,6 +14,8 @@ import com.scau.village.module.points.mapper.PointsRuleMapper;
 import com.scau.village.module.points.service.InspectionBatchService;
 import com.scau.village.module.points.service.InspectionHouseholdService;
 import com.scau.village.module.points.service.PointsApplyService;
+import com.scau.village.module.points.service.RuleConstraintService;
+import com.scau.village.module.points.service.RuleObservationEventService;
 import com.scau.village.module.points.service.ScoreEvidenceService;
 import com.scau.village.module.rectification.service.RectificationTaskService;
 import com.scau.village.module.user.entity.User;
@@ -43,6 +45,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
     private final ScoreEvidenceService scoreEvidenceService;
     private final RectificationTaskService rectificationTaskService;
     private final WatermarkUtils watermarkUtils;
+    private final RuleConstraintService ruleConstraintService;
+    private final RuleObservationEventService ruleObservationEventService;
 
     // ==================== 原有村民申报方法 ====================
     @Override
@@ -68,6 +72,11 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             }
         }
 
+        LocalDateTime applyTime = LocalDateTime.now();
+        if (rule.getId() != null && rule.getId() == 5) {
+            validateRuleFiveWindow(userId.intValue(), applyTime);
+        }
+
         PointsApply apply = new PointsApply();
         apply.setTenantId(tenantId);
         apply.setUserId(userId.intValue());
@@ -76,13 +85,13 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         apply.setImages(dto.getImages());
         apply.setStatus("pending");
         apply.setSourceType("user");
-        apply.setCreateTime(LocalDateTime.now());
+        apply.setCreateTime(applyTime);
         save(apply);
     }
 
     @Override
     @Transactional
-    public void approve(Integer applyId, Long auditorId, Boolean approved, String remark) {
+    public void approve(String applyId, Long auditorId, Boolean approved, String remark) {
         PointsApply apply = getById(applyId);
         if (apply == null || !"pending".equals(apply.getStatus())) {
             throw new BusinessException("申报记录不存在或已处理");
@@ -119,8 +128,13 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             flow.setCreateTime(LocalDateTime.now());
             flowMapper.insert(flow);
 
+            if (rule.getId() != null && rule.getId() == 5) {
+                ruleObservationEventService.record(apply.getUserId(), 5, "classified",
+                        apply.getAuditTime(), apply.getId() == null ? null : apply.getId().toString());
+            }
+
             operationLogService.log(auditorId, "POINTS_AUDIT",
-                    String.format("审核通过积分申报 ID:%d，规则:%s，增加积分:%d", applyId, rule.getRuleName(), rule.getPoints()));
+                    String.format("审核通过积分申报 ID:%s，规则:%s，增加积分:%d", applyId, rule.getRuleName(), rule.getPoints()));
         } else {
             apply.setStatus("rejected");
             operationLogService.log(auditorId, "POINTS_AUDIT",
@@ -204,6 +218,11 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             detailList.add(detail);
         }
 
+        LocalDateTime scoreTime = LocalDateTime.now();
+        if (rules.stream().anyMatch(rule -> rule.getId() != null && rule.getId() == 5)) {
+            validateRuleFiveWindow(dto.getUserId(), scoreTime);
+        }
+
         LocalDate inspectionDate = batch.getInspectionDate();
 
         // 遍历规则，逐条写入 points_apply 和 points_flow
@@ -234,6 +253,11 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             save(apply);
             log.info("【评分提交】✅ 写入 points_apply 成功，applyId={}, ruleId={}, sourceType={}",
                     apply.getId(), rule.getId(), apply.getSourceType());
+
+            if (rule.getId() != null && rule.getId() == 5) {
+                ruleObservationEventService.record(dto.getUserId(), 5, "classified",
+                        scoreTime, apply.getId() == null ? null : apply.getId().toString());
+            }
 
             // ----- 2. 写入 points_flow -----
             PointsFlow flow = new PointsFlow();
@@ -341,6 +365,28 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
         log.info("【评分提交】✅ 全部处理完成，userId={}, 规则数={}, 总得分={}",
                 dto.getUserId(), rules.size(), totalScore);
+    }
+
+    /**
+     * 校验规则 #5 的滚动 30 天无混装条件。
+     * 窗口由 rule_constraint 表决定，当前迁移版本为 rolling_days=30。
+     */
+    private void validateRuleFiveWindow(int userId, LocalDateTime now) {
+        RuleConstraintService.Window window;
+        com.scau.village.module.points.entity.RuleConstraint constraint =
+                ruleConstraintService.getEffective(5, now);
+        if (constraint == null) {
+            throw new BusinessException("规则#5时间窗口约束未配置");
+        }
+        try {
+            window = ruleConstraintService.resolve(constraint, now);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException("规则#5时间窗口约束无效");
+        }
+        if (ruleObservationEventService.exists(userId, 5, "mixed",
+                window.getStart(), window.getEnd())) {
+            throw new BusinessException("连续一个月无混装条件不满足");
+        }
     }
 
     // 内部类用于构建明细JSON
