@@ -42,6 +42,10 @@ public class PointsRule {
     @TableField("rule_version")
     private String ruleVersion;
 
+    /** 行为类型，用于区分普通评分与重要贡献认定。 */
+    @TableField("behavior_type")
+    private String behaviorType;
+
     private Integer status;
 
     private Integer sortOrder;

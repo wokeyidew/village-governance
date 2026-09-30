@@ -6,11 +6,14 @@ import com.scau.village.common.context.UserContext;
 import com.scau.village.common.result.Result;
 import com.scau.village.common.service.AiMatchService;
 import com.scau.village.module.points.dto.CreateBatchDto;
+import com.scau.village.module.points.dto.ImportantContributionApproveDto;
+import com.scau.village.module.points.dto.ImportantContributionSubmitDto;
 import com.scau.village.module.points.dto.InspectionQueryDto;
 import com.scau.village.module.points.dto.OfflineScoreDto;
 import com.scau.village.module.points.dto.ReviewDto;
 import com.scau.village.module.points.dto.ScoreSubmitDto;
 import com.scau.village.module.points.entity.InspectionBatch;
+import com.scau.village.module.points.entity.ImportantContribution;
 import com.scau.village.module.points.entity.OfflineSyncRecord;
 import com.scau.village.module.points.entity.PointsApply;
 import com.scau.village.module.points.entity.PointsRule;
@@ -19,6 +22,7 @@ import com.scau.village.module.points.mapper.OfflineSyncRecordMapper;
 import com.scau.village.module.points.mapper.PointsApplyMapper;
 import com.scau.village.module.points.mapper.PointsRuleMapper;
 import com.scau.village.module.points.service.InspectionBatchService;
+import com.scau.village.module.points.service.ImportantContributionService;
 import com.scau.village.module.points.service.PointsApplyService;
 import com.scau.village.module.points.service.PublishSnapshotService;
 import com.scau.village.module.points.service.ReviewFlowService;
@@ -74,6 +78,7 @@ public class InspectionController {
     private final AiMatchService aiMatchService;
     private final OfflineSyncRecordMapper offlineSyncRecordMapper;
     private final ReviewFlowService reviewFlowService;
+    private final ImportantContributionService importantContributionService;
 
     /**
      * 1. 创建检查批次
@@ -153,6 +158,40 @@ public class InspectionController {
             pointsApplyService.postDoubleApproval(applyId, reviewerId);
         }
         return Result.success("审核处理完成", fullyApproved);
+    }
+
+    /** 提交规则 #18、#21、#28 的重要贡献认定材料。 */
+    @PostMapping("/contribution/submit")
+    public Result<ImportantContribution> submitContribution(
+            @Valid @RequestBody ImportantContributionSubmitDto dto) {
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "请先登录");
+        }
+        ImportantContribution contribution = importantContributionService.submit(
+                userId.intValue(), dto.getRuleId(), dto.getContributionDesc(),
+                dto.getEvidencePhotos(), dto.getSourceRef());
+        return Result.success(contribution);
+    }
+
+    /** 管理员审批重要贡献认定。 */
+    @PostMapping("/contribution/approve/{id}")
+    public Result<Void> approveContribution(@PathVariable String id,
+                                            @RequestBody ImportantContributionApproveDto dto) {
+        Long approverId = UserContext.getCurrentUserId();
+        if (approverId == null) {
+            return Result.error(401, "请先登录");
+        }
+        importantContributionService.approve(id, approverId.intValue(),
+                dto == null ? null : dto.getRemark());
+        return Result.success(null);
+    }
+
+    /** 查询当前租户待审批的重要贡献认定。 */
+    @GetMapping("/contribution/pending")
+    public Result<List<ImportantContribution>> listPendingContributions() {
+        return Result.success(importantContributionService.listPending(
+                UserContext.getCurrentTenantId()));
     }
 
     /**

@@ -13,6 +13,7 @@ import com.scau.village.module.points.mapper.PointsFlowMapper;
 import com.scau.village.module.points.mapper.PointsRuleMapper;
 import com.scau.village.module.points.service.InspectionBatchService;
 import com.scau.village.module.points.service.InspectionHouseholdService;
+import com.scau.village.module.points.service.ImportantContributionService;
 import com.scau.village.module.points.service.MonthlyQuotaService;
 import com.scau.village.module.points.service.PointsApplyService;
 import com.scau.village.module.points.service.PoultryPenaltyDecisionService;
@@ -57,6 +58,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
     private final RuleOccurrenceService ruleOccurrenceService;
     private final RuleComponentService ruleComponentService;
     private final ReviewFlowService reviewFlowService;
+    private final ImportantContributionService importantContributionService;
 
     // ==================== 原有村民申报方法 ====================
     @Override
@@ -199,6 +201,13 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
         for (PointsRule rule : rules) {
             monthlyQuotaService.assertAvailable(dto.getUserId(), rule.getId());
+            if ("important".equals(rule.getBehaviorType())) {
+                if (dto.getContributionId() == null || dto.getContributionId().trim().isEmpty()) {
+                    throw new BusinessException("重要贡献规则必须关联认定记录");
+                }
+                importantContributionService.requireApproved(
+                        dto.getUserId(), rule.getId(), dto.getContributionId());
+            }
         }
 
         // 检查是否包含扣分规则
@@ -252,7 +261,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             if (rule.getStatus() != 1) {
                 throw new BusinessException("规则[" + rule.getRuleName() + "]已禁用，不能使用");
             }
-            if (isDoubleReview(rule)) {
+            if (isDoubleReview(rule) && !isImportantContribution(rule)) {
                 continue;
             }
             int rulePoints = Integer.valueOf(16).equals(rule.getId())
@@ -277,7 +286,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
         // 遍历规则，逐条写入 points_apply 和 points_flow
         for (PointsRule rule : rules) {
-            boolean doubleReview = isDoubleReview(rule);
+            boolean doubleReview = isDoubleReview(rule) && !isImportantContribution(rule);
             int appliedPoints = Integer.valueOf(16).equals(rule.getId())
                     ? rule16Score : rule.getPoints();
             // ----- 1. 写入 points_apply -----
@@ -400,7 +409,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             }
         }
 
-        boolean hasImmediateRule = rules.stream().anyMatch(rule -> !isDoubleReview(rule));
+        boolean hasImmediateRule = rules.stream()
+                .anyMatch(rule -> !isDoubleReview(rule) || isImportantContribution(rule));
         if (hasImmediateRule) {
             // 7. 更新用户积分（同时更新三个字段）
             int newPoints = user.getPoints() + totalScore;
@@ -550,6 +560,10 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
     private boolean isDoubleReview(PointsRule rule) {
         return rule != null && "double".equalsIgnoreCase(rule.getAuditFlow());
+    }
+
+    private boolean isImportantContribution(PointsRule rule) {
+        return rule != null && "important".equalsIgnoreCase(rule.getBehaviorType());
     }
 
     /**

@@ -57,6 +57,9 @@ public class ScoreSubmitDto {
      */
     private Map<String, Boolean> componentResults;
 
+    /** 重要贡献认定记录 ID，仅 important 行为规则使用。 */
+    private String contributionId;
+
     /**
      * 容错处理：前端可能传空字符串 "" 或 [""]，转为空列表
      * 避免 Spring 无法将空字符串解析为 List<String> 导致 500

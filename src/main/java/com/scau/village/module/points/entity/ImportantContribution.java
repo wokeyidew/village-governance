@@ -1,8 +1,6 @@
 package com.scau.village.module.points.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -33,9 +31,8 @@ public class ImportantContribution {
     /**
      * 主键ID（雪花算法生成）
      */
-    @TableId(type = IdType.ASSIGN_ID)
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long id;
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
+    private String id;
 
     /**
      * 租户ID
@@ -116,6 +113,62 @@ public class ImportantContribution {
      */
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    /** 关联的积分规则 ID。 */
+    @TableField("rule_id")
+    private Integer ruleId;
+
+    /** 认定时使用的规则版本。 */
+    @TableField("rule_version")
+    private String ruleVersion;
+
+    /** 外部来源或业务单据引用。 */
+    @TableField("source_ref")
+    private String sourceRef;
+
+    /** 建议被采纳或贡献发生时间。 */
+    @TableField("adopted_at")
+    private LocalDateTime adoptedAt;
+
+    /** 第二阶段认定人。 */
+    @TableField("second_approved_by")
+    private Integer secondApprovedBy;
+
+    /** 第二阶段认定时间。 */
+    @TableField("second_approved_time")
+    private LocalDateTime secondApprovedTime;
+
+    /** 贡献对象引用。 */
+    @TableField("subject_ref")
+    private String subjectRef;
+
+    /** 贡献有效期开始时间。 */
+    @TableField("period_start")
+    private LocalDateTime periodStart;
+
+    /** 贡献有效期结束时间。 */
+    @TableField("period_end")
+    private LocalDateTime periodEnd;
+
+    /** 照护频次说明。 */
+    @TableField("care_frequency")
+    private String careFrequency;
+
+    /** 调解案件引用。 */
+    @TableField("case_ref")
+    private String caseRef;
+
+    /** 调解参与方 JSON。 */
+    @TableField("parties_json")
+    private String partiesJson;
+
+    /** 贡献结果。 */
+    @TableField("outcome")
+    private String outcome;
+
+    /** 结果确认时间。 */
+    @TableField("outcome_confirmed_at")
+    private LocalDateTime outcomeConfirmedAt;
 
     // ==================== 状态常量（便于代码中引用） ====================
 
