@@ -8,6 +8,7 @@ import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 提交评分请求DTO
@@ -50,6 +51,11 @@ public class ScoreSubmitDto {
      * 前端以 multipart/form-data 或 base64 形式上传多张图片
      */
     private List<String> images;
+
+    /**
+     * 规则子项结果，仅规则 #16 门前三包使用；键为 component_code，值为是否通过。
+     */
+    private Map<String, Boolean> componentResults;
 
     /**
      * 容错处理：前端可能传空字符串 "" 或 [""]，转为空列表

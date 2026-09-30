@@ -15,6 +15,7 @@ import com.scau.village.module.points.service.InspectionBatchService;
 import com.scau.village.module.points.service.InspectionHouseholdService;
 import com.scau.village.module.points.service.PointsApplyService;
 import com.scau.village.module.points.service.PoultryPenaltyDecisionService;
+import com.scau.village.module.points.service.RuleComponentService;
 import com.scau.village.module.points.service.RuleConstraintService;
 import com.scau.village.module.points.service.RuleObservationEventService;
 import com.scau.village.module.points.service.RuleOccurrenceService;
@@ -51,6 +52,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
     private final RuleObservationEventService ruleObservationEventService;
     private final PoultryPenaltyDecisionService poultryPenaltyDecisionService;
     private final RuleOccurrenceService ruleOccurrenceService;
+    private final RuleComponentService ruleComponentService;
 
     // ==================== 原有村民申报方法 ====================
     @Override
@@ -210,6 +212,16 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             }
         }
 
+        boolean hasRule16 = rules.stream()
+                .anyMatch(rule -> Integer.valueOf(16).equals(rule.getId()));
+        int rule16Score = 0;
+        if (hasRule16) {
+            if (dto.getComponentResults() == null || dto.getComponentResults().isEmpty()) {
+                throw new BusinessException("门前三包必须提交子项结果");
+            }
+            rule16Score = ruleComponentService.calculateScore(16, dto.getComponentResults());
+        }
+
         boolean hasPenaltyRule = rules.stream().anyMatch(rule -> rule.getPoints() < 0);
 
         // 扣分项必须上传照片
@@ -230,7 +242,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
             if (rule.getStatus() != 1) {
                 throw new BusinessException("规则[" + rule.getRuleName() + "]已禁用，不能使用");
             }
-            int rulePoints = rule.getPoints();
+            int rulePoints = Integer.valueOf(16).equals(rule.getId())
+                    ? rule16Score : rule.getPoints();
             totalScore += rulePoints;
             if (rulePoints > 0) {
                 positiveScoreSum += rulePoints;
@@ -251,6 +264,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
 
         // 遍历规则，逐条写入 points_apply 和 points_flow
         for (PointsRule rule : rules) {
+            int appliedPoints = Integer.valueOf(16).equals(rule.getId())
+                    ? rule16Score : rule.getPoints();
             // ----- 1. 写入 points_apply -----
             PointsApply apply = new PointsApply();
             apply.setTenantId(tenantId);
@@ -289,10 +304,14 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
                         scoreTime, apply.getId() == null ? null : apply.getId().toString());
             }
 
+            if (Integer.valueOf(16).equals(rule.getId())) {
+                ruleComponentService.saveResults(apply.getId(), 16, dto.getComponentResults());
+            }
+
             // ----- 2. 写入 points_flow -----
             PointsFlow flow = new PointsFlow();
             flow.setUserId(user.getId());
-            flow.setChangeAmount(rule.getPoints());
+            flow.setChangeAmount(appliedPoints);
             flow.setSourceType("admin_inspection");
             flow.setSourceId(apply.getId().toString());
             flow.setRemark("管理员现场评分：" + rule.getRuleName() + "，批次：" + batch.getBatchName());
@@ -307,7 +326,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
                     flow.getId(), flow.getSourceId(), flow.getChangeAmount(), flow.getBatchId(), flow.getApplyId());
 
             // ----- 3. 如果是扣分规则，保存证据并创建整改任务 -----
-            if (rule.getPoints() < 0) {
+            if (appliedPoints < 0) {
                 // 保存证据
                 if (dto.getImages() != null && !dto.getImages().isEmpty()) {
                     String photoUrls = String.join(",", dto.getImages());
