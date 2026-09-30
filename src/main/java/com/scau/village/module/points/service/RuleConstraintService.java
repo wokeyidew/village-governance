@@ -28,6 +28,9 @@ public interface RuleConstraintService extends IService<RuleConstraint> {
      */
     Window resolve(RuleConstraint constraint, LocalDateTime now);
 
+    /** 统计用户在时间窗口内已通过的指定规则申请数。 */
+    int countInWindow(int userId, int ruleId, Window window);
+
     /**
      * 时间窗口值对象。
      */

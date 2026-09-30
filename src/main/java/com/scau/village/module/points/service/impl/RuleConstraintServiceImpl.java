@@ -52,4 +52,14 @@ public class RuleConstraintServiceImpl extends ServiceImpl<RuleConstraintMapper,
         // TODO: 需人工确认未知窗口类型的制度解释。
         throw new IllegalArgumentException("不支持的规则窗口类型: " + windowType);
     }
+
+    @Override
+    public int countInWindow(int userId, int ruleId, Window window) {
+        if (window == null || window.getStart() == null || window.getEnd() == null
+                || window.getStart().isAfter(window.getEnd())) {
+            return 0;
+        }
+        return baseMapper.countApprovedInWindow(userId, ruleId,
+                window.getStart(), window.getEnd());
+    }
 }

@@ -13,6 +13,7 @@ import com.scau.village.module.points.mapper.PointsFlowMapper;
 import com.scau.village.module.points.mapper.PointsRuleMapper;
 import com.scau.village.module.points.service.InspectionBatchService;
 import com.scau.village.module.points.service.InspectionHouseholdService;
+import com.scau.village.module.points.service.MonthlyQuotaService;
 import com.scau.village.module.points.service.PointsApplyService;
 import com.scau.village.module.points.service.PoultryPenaltyDecisionService;
 import com.scau.village.module.points.service.RuleComponentService;
@@ -45,6 +46,7 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
     private final OperationLogService operationLogService;
     private final InspectionBatchService inspectionBatchService;
     private final InspectionHouseholdService inspectionHouseholdService;
+    private final MonthlyQuotaService monthlyQuotaService;
     private final ScoreEvidenceService scoreEvidenceService;
     private final RectificationTaskService rectificationTaskService;
     private final WatermarkUtils watermarkUtils;
@@ -62,6 +64,8 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         if (rule == null || rule.getStatus() != 1) {
             throw new BusinessException("积分规则不存在或已禁用");
         }
+
+        monthlyQuotaService.assertAvailable(userId.intValue(), rule.getId());
 
         // 每日上限校验
         if (rule.getMaxTimesPerDay() != null && rule.getMaxTimesPerDay() > 0) {
@@ -189,6 +193,10 @@ public class PointsApplyServiceImpl extends ServiceImpl<PointsApplyMapper, Point
         if (rules.size() != ruleIds.size()) {
             log.warn("【评分提交】部分规则不存在，请求规则数={}, 实际查询到={}", ruleIds.size(), rules.size());
             throw new BusinessException("部分规则不存在或已被删除");
+        }
+
+        for (PointsRule rule : rules) {
+            monthlyQuotaService.assertAvailable(dto.getUserId(), rule.getId());
         }
 
         // 检查是否包含扣分规则
