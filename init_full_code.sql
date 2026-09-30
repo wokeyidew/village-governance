@@ -834,7 +834,7 @@ CREATE TABLE `offline_sync_record` (
 -- ======================================================
 -- 30. 为 points_apply 表增加 has_evidence 字段（功能一）
 -- ======================================================
-ALTER TABLE `points_apply` ADD COLUMN IF NOT EXISTS `has_evidence` tinyint(1) DEFAULT '0' COMMENT '是否有证据：0-无，1-有';
+-- patched tinyint(1) DEFAULT '0' COMMENT '是否有证据：0-无，1-有';
 
 
 -- ======================================================
